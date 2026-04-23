@@ -16,3 +16,16 @@ Used for:
 - Timming low-quality ends
 - filtering poor reads
 - helping aligners weigh confidence
+
+---
+
+**Adapter contamination**: when a sequencing read contains part of the synthetic adapter sequence that was added during klibrary preparation (instead of only biological sequence from the sample). Occurs when DNA/RNA fragment is shorter than the read length so the sequencer reads through the real insert and into the adapter on the end. It can also happen it the adapter dimerizes or if poorly size-selected fragments get sequenced.
+
+- Adapter contamination can reduce alignment rates and increase mismatches
+- Can distort downstream analyses
+- Often appear as rising adapter content signal toward 3-prime end of reads
+
+Illumina adapter carryover e.g., `GATCGGAAGAGCACACGTCTGAACTCCAGTCACAGTCAAATCTCGTATGC`
+
+homopolymer-rich sequences e.g.,
+`CCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT`

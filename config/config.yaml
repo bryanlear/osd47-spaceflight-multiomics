@@ -5,6 +5,20 @@ study:
 input_dir: /Volumes/bryan_SSD/genelab
 metadata_file: null
 
+trimming:
+  enabled: false
+  tool: fastp
+  adapter_sequence: null
+  qualified_quality_phred: 20
+  unqualified_percent_limit: 30
+  min_length: 20
+  cut_right: false
+  cut_window_size: 4
+  cut_mean_quality: 20
+  poly_x: false
+  poly_x_min_len: 10
+  threads: 4
+
 archives:
   - id: C-Ba-1
     file: GLDS-47_rna-seq_C-Ba-1.tar.gz
