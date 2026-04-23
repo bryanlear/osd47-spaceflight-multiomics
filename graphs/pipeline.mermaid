@@ -1,0 +1,22 @@
+flowchart TD
+    A[Goal:<br/>Build RNA-seq pipeline from raw data] --> B[Download study archives and metadata]
+    B --> C[Verify integrity<br/>checksums / archive contents]
+    C --> D[Extract raw fastq.gz files]
+    D --> E[Organize samples and metadata]
+    E --> F[Design choices you control:<br/>reference version, trimming rules, aligner, quantifier, contrasts]
+    F --> G[Raw QC review]
+    G --> H[Optional trimming / filtering]
+    H --> I[Post-trim QC]
+    I --> J[Reference preparation]
+    J --> K[Alignment or pseudoalignment<br/>STAR / HISAT2 / Salmon / kallisto]
+    K --> L[Quantification<br/>RSEM / featureCounts / Salmon]
+    L --> M[QC checkpoints<br/>mapping rate, strandedness, duplication, coverage]
+    M --> N[Count matrix assembly]
+    N --> O[Exploratory analysis<br/>PCA, clustering, outlier review]
+    O --> P[Differential expression modeling<br/>DESeq2 / edgeR / limma-voom]
+    P --> Q[Biological interpretation<br/>enrichment, pathways, gene sets]
+    Q --> R[Final deliverables:<br/>workflow code, QC report, counts, DE results, figures]
+
+    F -. informs .-> H
+    F -. informs .-> J
+    F -. informs .-> P
