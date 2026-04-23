@@ -1,0 +1,48 @@
+study:
+  accession: OSD-47
+  organism: Mus musculus
+
+input_dir: /Volumes/bryan_SSD/genelab
+metadata_file: null
+
+archives:
+  - id: C-Ba-1
+    file: GLDS-47_rna-seq_C-Ba-1.tar.gz
+    condition: BSL
+    replicate: 1
+  - id: C-Ba-2
+    file: GLDS-47_rna-seq_C-Ba-2.tar.gz
+    condition: BSL
+    replicate: 2
+  - id: C-Ba-3
+    file: GLDS-47_rna-seq_C-Ba-3.tar.gz
+    condition: BSL
+    replicate: 3
+  - id: C-FLT-1
+    file: GLDS-47_rna-seq_C-FLT-1.tar.gz
+    condition: FLT
+    replicate: 1
+  - id: C-FLT-2
+    file: GLDS-47_rna-seq_C-FLT-2.tar.gz
+    condition: FLT
+    replicate: 2
+  - id: C-FLT-4
+    file: GLDS-47_rna-seq_C-FLT-4.tar.gz
+    condition: FLT
+    replicate: 4
+  - id: C-GC-2
+    file: GLDS-47_rna-seq_C-GC-2.tar.gz
+    condition: GC
+    replicate: 2
+  - id: C-GC-3
+    file: GLDS-47_rna-seq_C-GC-3.tar.gz
+    condition: GC
+    replicate: 3
+  - id: C-GC-5
+    file: GLDS-47_rna-seq_C-GC-5.tar.gz
+    condition: GC
+    replicate: 5
+
+outputs:
+  archive_manifest: results/metadata/archive_manifest.tsv
+  lane_manifest: results/metadata/lane_manifest.tsv

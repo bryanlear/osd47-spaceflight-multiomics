@@ -1,22 +1,103 @@
-flowchart TD
-    A[Goal:<br/>Build RNA-seq pipeline from raw data] --> B[Download study archives and metadata]
-    B --> C[Verify integrity<br/>checksums / archive contents]
-    C --> D[Extract raw fastq.gz files]
-    D --> E[Organize samples and metadata]
-    E --> F[Design choices you control:<br/>reference version, trimming rules, aligner, quantifier, contrasts]
-    F --> G[Raw QC review]
-    G --> H[Optional trimming / filtering]
-    H --> I[Post-trim QC]
-    I --> J[Reference preparation]
-    J --> K[Alignment or pseudoalignment<br/>STAR / HISAT2 / Salmon / kallisto]
-    K --> L[Quantification<br/>RSEM / featureCounts / Salmon]
-    L --> M[QC checkpoints<br/>mapping rate, strandedness, duplication, coverage]
-    M --> N[Count matrix assembly]
-    N --> O[Exploratory analysis<br/>PCA, clustering, outlier review]
-    O --> P[Differential expression modeling<br/>DESeq2 / edgeR / limma-voom]
-    P --> Q[Biological interpretation<br/>enrichment, pathways, gene sets]
-    Q --> R[Final deliverables:<br/>workflow code, QC report, counts, DE results, figures]
+flowchart LR
+    GOAL[Goal:<br/>Convert OSD-47 raw archives into a reproducible sample sheet,<br/>QC report, count matrix, and differential expression results]
 
-    F -. informs .-> H
-    F -. informs .-> J
-    F -. informs .-> P
+    subgraph INPUTS[OSD-47 Inputs]
+        I1[Raw archives<br/>GLDS-47_rna-seq_C-Ba-1/2/3.tar.gz<br/>GLDS-47_rna-seq_C-FLT-1/2/4.tar.gz<br/>GLDS-47_rna-seq_C-GC-2/3/5.tar.gz]
+        I2[Checksum table<br/>GLDS-47_rna-seq_raw_md5sum_GLbulkRNAseq.tsv]
+        I3[Study metadata<br/>OSD-47 ISA archive and factor annotations]
+        I4[Reference assets<br/>mouse FASTA and GTF]
+    end
+
+    subgraph PROCESSES[Nextflow-style Processes]
+        P1[VERIFY_ARCHIVES]
+        P2[EXTRACT_ARCHIVES] 
+        P3[CONCAT_LANES_PER_SAMPLE]
+        P4[BUILD_SAMPLESHEET]
+        P5[FASTQC_RAW]
+        P6[TRIM_READS<br/>fastp or Trim Galore]
+        P7[FASTQC_TRIMMED]
+        P8[BUILD_REFERENCE_INDEX]
+        P9[ALIGN_READS<br/>STAR]
+        P10[RNA_QC<br/>RSeQC]
+        P11[QUANTIFY_COUNTS<br/>featureCounts or RSEM]
+        P12[MERGE_COUNT_MATRIX]
+        P13[DESEQ2_ANALYSIS]
+        P14[MULTIQC_AND_REPORT]
+    end
+
+    subgraph OUTPUTS[Explicit Outputs]
+        O1[validated_archives.tsv]
+        O2[extracted_fastq/<br/>lane-level FASTQ.gz]
+        O3[raw_fastq/<br/>one merged FASTQ.gz per OSD-47 sample]
+        O4[samplesheet.csv<br/>sample_id, condition, replicate, fastq]
+        O5[qc/raw_fastqc/*]
+        O6[trimmed_fastq/*<br/>trimming logs]
+        O7[qc/trimmed_fastqc/*]
+        O8[reference/index/*]
+        O9[align/*.bam and *.bai]
+        O10[qc/rseqc/*]
+        O11[counts/sample_counts/*]
+        O12[counts/raw_counts_matrix.tsv]
+        O13[results/normalized_counts.tsv<br/>results/vst_counts.tsv<br/>results/Ba_vs_FLT.tsv<br/>results/Ba_vs_GC.tsv<br/>results/FLT_vs_GC.tsv]
+        O14[reports/multiqc.html<br/>reports/osd47_pipeline_summary.html<br/>figures/PCA_volcano_heatmap]
+    end
+
+    GOAL --> I1
+    GOAL --> I3
+    GOAL --> I4
+
+    I1 --> P1
+    I2 --> P1
+    P1 --> O1
+
+    O1 --> P2
+    I1 --> P2
+    P2 --> O2
+
+    O2 --> P3
+    P3 --> O3
+
+    O3 --> P4
+    I3 --> P4
+    P4 --> O4
+
+    O3 --> P5
+    P5 --> O5
+
+    O3 --> P6
+    P6 --> O6
+
+    O6 --> P7
+    P7 --> O7
+
+    I4 --> P8
+    P8 --> O8
+
+    O6 --> P9
+    O4 --> P9
+    O8 --> P9
+    P9 --> O9
+
+    O9 --> P10
+    I4 --> P10
+    P10 --> O10
+
+    O9 --> P11
+    O4 --> P11
+    I4 --> P11
+    P11 --> O11
+
+    O11 --> P12
+    O4 --> P12
+    P12 --> O12
+
+    O12 --> P13
+    O4 --> P13
+    I3 --> P13
+    P13 --> O13
+
+    O5 --> P14
+    O7 --> P14
+    O10 --> P14
+    O13 --> P14
+    P14 --> O14
