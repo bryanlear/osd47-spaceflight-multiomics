@@ -6,7 +6,7 @@ input_dir: /Volumes/bryan_SSD/genelab
 metadata_file: null
 
 trimming:
-  enabled: false
+  enabled: true
   tool: fastp
   adapter_sequence: null
   qualified_quality_phred: 20

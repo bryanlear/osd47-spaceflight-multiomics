@@ -29,3 +29,95 @@ Illumina adapter carryover e.g., `GATCGGAAGAGCACACGTCTGAACTCCAGTCACAGTCAAATCTCGT
 
 homopolymer-rich sequences e.g.,
 `CCCCCCCCTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT`
+
+---
+
+### Alignment-based quantification 
+**Tools**:
+- `STAR`: Commonly used: fast and performrs well for splice aware alignmenmt
+- `HISAT2`
+
+e.g.,
+
+```
+trimmed FASTQ
+    ↓
+STAR alignment to reference genome
+    ↓
+BAM file
+    ↓
+alignment QC
+    ↓
+gene-level counting
+```
+
+```
+STAR --genomeDir STAR_index \
+     --readFilesIn sample_trimmed.fastq.gz \
+     --outSAMtype BAM SortedByCoordinate \
+     --outFileNamePrefix sample_
+```
+
+### Lightweight transcript quantification
+**Tools**:
+- `Salmon`
+- `Kallisto`
+
+e.g., 
+```
+trimmed FASTQ
+    ↓
+Salmon quantification against transcriptome
+    ↓
+transcript-level abundance estimates
+    ↓
+gene-level summarization with tximport
+    ↓
+DESeq2 / edgeR / limma-voom
+```
+
+Forward: `--libType SF`
+
+Reverse: `--libType SR`
+
+---
+
+Single-end RNA-seq = sequencer reads only one end of each cDNA fragment:
+
+```
+RNA fragment / cDNA fragment:
+5' ----------------------------- 3'
+
+Single-end sequencing:
+READ →
+5' -----> 
+```
+  * Lower mapping confidence
+  * Lower isoform/splice-junction resolution
+  * Weaker fusion detection
+  * Gene-level differentiation expression is fine (same for paired-end sequencing)
+
+Paired-end sequencing = both ends of the same fragment are sequenced:
+
+```
+Paired-end sequencing:
+READ 1 →                 ← READ 2
+5' ----->             <----- 3'
+```
+
+  * Higher mappoing confidence
+  * Higher isoform/splice-junction resolution
+  * Better fusion detection
+
+Stranded-RNA-seq lets aligner interpret whether a read supports gene on the same strand or the opposite strand
+
+---
+
+**Lane**:Physical sequencing lane on Illumina flow cell. A single biological sample library is often split across multiple lanes to get more depth and balance the run:
+
+e.g., 
+```
+genelab/extracted_rnaseq/C-FLT-4/C-FLT-4_S62_L005_R1_001.fastq.gz
+genelab/extracted_rnaseq/C-FLT-4/C-FLT-4_S62_L006_R1_001.fastq.gz
+genelab/extracted_rnaseq/C-FLT-4/C-FLT-4_S62_L007_R1_001.fastq.gz 
+```

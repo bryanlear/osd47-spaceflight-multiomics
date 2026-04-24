@@ -68,8 +68,7 @@ rule trim_lanes:
 			  -l {params.min_length} \
 			  -h "{params.report_root}/${{archive_id}}/${{lane_base}}.fastp.html" \
 			  -j "{params.report_root}/${{archive_id}}/${{lane_base}}.fastp.json" \
-			  -w {threads} \
-			  {params.extra_args}
+			  -w {threads} {params.extra_args}
 		done
 		touch "{output.marker}"
 		"""
