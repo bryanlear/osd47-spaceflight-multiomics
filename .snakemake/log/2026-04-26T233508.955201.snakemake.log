@@ -1,0 +1,128 @@
+Assuming unrestricted shared filesystem usage.
+host: Bryans-Mac-mini.lan
+Building DAG of jobs...
+Using shell: /bin/bash
+Provided cores: 4
+Rules claiming more threads will be scaled down.
+Job stats:
+job                    count
+-------------------  -------
+build_lane_manifest        1
+run_trimmed_fastqc         1
+run_trimmed_multiqc        1
+trim_lanes                 1
+total                      4
+
+Select jobs to execute...
+Execute 1 jobs...
+[Sun Apr 26 23:35:09 2026]
+localrule build_lane_manifest:
+    input: results/extracted/C-Ba-1/.extracted.ok, results/extracted/C-Ba-2/.extracted.ok, results/extracted/C-Ba-3/.extracted.ok, results/extracted/C-FLT-1/.extracted.ok, results/extracted/C-FLT-2/.extracted.ok, results/extracted/C-FLT-4/.extracted.ok, results/extracted/C-GC-2/.extracted.ok, results/extracted/C-GC-3/.extracted.ok, results/extracted/C-GC-5/.extracted.ok
+    output: results/metadata/lane_manifest.tsv
+    jobid: 2
+    reason: Code has changed since last execution
+    resources: tmpdir=/var/folders/6s/80n5p35d191d08wb9b69g44w0000gn/T
+[Sun Apr 26 23:35:09 2026]
+Finished jobid: 2 (Rule: build_lane_manifest)
+1 of 4 steps (25%) done
+Select jobs to execute...
+Execute 1 jobs...
+[Sun Apr 26 23:35:09 2026]
+localrule trim_lanes:
+    input: results/metadata/lane_manifest.tsv
+    output: results/trimmed/.trimmed.ok
+    jobid: 1
+    reason: Input files updated by another job: results/metadata/lane_manifest.tsv
+    threads: 4
+    resources: tmpdir=/var/folders/6s/80n5p35d191d08wb9b69g44w0000gn/T
+RuleException:
+CalledProcessError in file "/Users/bry_lee/osd47-spaceflight-multiomics/workflow/rules/trimming.smk", line 54:
+Command 'set -euo pipefail;  
+		set -euo pipefail
+		mkdir -p results/trimmed results/qc/trimmed_fastp
+		tail -n +2 "results/metadata/lane_manifest.tsv" | while IFS=$'\t' read -r archive_id condition replicate lane_fastq lane_name; do
+			lane_base="${lane_name%.fastq.gz}"
+			if [[ "${lane_base}" == "${lane_name}" ]]; then
+				lane_base="${lane_name%.fq.gz}"
+			fi
+
+			mkdir -p "results/trimmed/${archive_id}" "results/qc/trimmed_fastp/${archive_id}"
+
+			fastp \
+			  -i "${lane_fastq}" \
+			  -o "results/trimmed/${archive_id}/${lane_base}.trimmed.fastq.gz" \
+			  -q 20 \
+			  -u 30 \
+			  -l 20 \
+			  -h "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.html" \
+			  -j "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.json" \
+			  -w 4 
+		done
+		touch "results/trimmed/.trimmed.ok"' returned non-zero exit status 127.
+[Sun Apr 26 23:35:09 2026]
+Error in rule trim_lanes:
+    message: None
+    jobid: 1
+    input: results/metadata/lane_manifest.tsv
+    output: results/trimmed/.trimmed.ok
+    shell:
+        
+		set -euo pipefail
+		mkdir -p results/trimmed results/qc/trimmed_fastp
+		tail -n +2 "results/metadata/lane_manifest.tsv" | while IFS=$'\t' read -r archive_id condition replicate lane_fastq lane_name; do
+			lane_base="${lane_name%.fastq.gz}"
+			if [[ "${lane_base}" == "${lane_name}" ]]; then
+				lane_base="${lane_name%.fq.gz}"
+			fi
+
+			mkdir -p "results/trimmed/${archive_id}" "results/qc/trimmed_fastp/${archive_id}"
+
+			fastp \
+			  -i "${lane_fastq}" \
+			  -o "results/trimmed/${archive_id}/${lane_base}.trimmed.fastq.gz" \
+			  -q 20 \
+			  -u 30 \
+			  -l 20 \
+			  -h "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.html" \
+			  -j "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.json" \
+			  -w 4 
+		done
+		touch "results/trimmed/.trimmed.ok"
+		
+        (command exited with non-zero exit code)
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look below for error messages
+[Sun Apr 26 23:35:09 2026]
+Error in rule trim_lanes:
+    message: None
+    jobid: 1
+    input: results/metadata/lane_manifest.tsv
+    output: results/trimmed/.trimmed.ok
+    shell:
+        
+		set -euo pipefail
+		mkdir -p results/trimmed results/qc/trimmed_fastp
+		tail -n +2 "results/metadata/lane_manifest.tsv" | while IFS=$'\t' read -r archive_id condition replicate lane_fastq lane_name; do
+			lane_base="${lane_name%.fastq.gz}"
+			if [[ "${lane_base}" == "${lane_name}" ]]; then
+				lane_base="${lane_name%.fq.gz}"
+			fi
+
+			mkdir -p "results/trimmed/${archive_id}" "results/qc/trimmed_fastp/${archive_id}"
+
+			fastp \
+			  -i "${lane_fastq}" \
+			  -o "results/trimmed/${archive_id}/${lane_base}.trimmed.fastq.gz" \
+			  -q 20 \
+			  -u 30 \
+			  -l 20 \
+			  -h "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.html" \
+			  -j "results/qc/trimmed_fastp/${archive_id}/${lane_base}.fastp.json" \
+			  -w 4 
+		done
+		touch "results/trimmed/.trimmed.ok"
+		
+        (command exited with non-zero exit code)
+Complete log(s): /Users/bry_lee/osd47-spaceflight-multiomics/.snakemake/log/2026-04-26T233508.955201.snakemake.log
+WorkflowError:
+At least one job did not complete successfully.

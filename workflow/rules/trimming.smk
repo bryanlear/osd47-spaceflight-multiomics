@@ -4,6 +4,8 @@ import shlex
 TRIMMING = config.get("trimming", {})
 TRIMMING_ENABLED = TRIMMING.get("enabled", False)
 TRIMMING_TOOL = TRIMMING.get("tool", "fastp")
+STUDY_SLUG = str(config["study"]["accession"]).lower().replace("-", "")
+TRIMMED_MULTIQC_STEM = f"{STUDY_SLUG}_trimmed_multiqc"
 
 
 if TRIMMING_ENABLED and TRIMMING_TOOL != "fastp":
@@ -71,4 +73,58 @@ rule trim_lanes:
 			  -w {threads} {params.extra_args}
 		done
 		touch "{output.marker}"
+		"""
+
+
+rule run_trimmed_fastqc:
+	input:
+		manifest=config["outputs"]["lane_manifest"],
+		trimmed_marker="results/trimmed/.trimmed.ok"
+	output:
+		marker="results/qc/trimmed_fastqc/.fastqc.ok"
+	threads:
+		lambda wildcards: TRIMMING.get("threads", 4)
+	params:
+		trimmed_root="results/trimmed",
+		report_root="results/qc/trimmed_fastqc"
+	shell:
+		r"""
+		set -euo pipefail
+		mkdir -p {params.report_root}
+		rm -f "{output.marker}"
+		tail -n +2 "{input.manifest}" | while IFS=$'\t' read -r archive_id condition replicate lane_fastq lane_name; do
+			lane_base="${{lane_name%.fastq.gz}}"
+			if [[ "${{lane_base}}" == "${{lane_name}}" ]]; then
+				lane_base="${{lane_name%.fq.gz}}"
+			fi
+
+			fastqc \
+			  --threads {threads} \
+			  --outdir "{params.report_root}" \
+			  "{params.trimmed_root}/${{archive_id}}/${{lane_base}}.trimmed.fastq.gz"
+		done
+		touch "{output.marker}"
+		"""
+
+
+rule run_trimmed_multiqc:
+	input:
+		trimmed_marker="results/trimmed/.trimmed.ok",
+		fastqc_marker="results/qc/trimmed_fastqc/.fastqc.ok"
+	output:
+		html=f"results/qc/trimmed_multiqc/{TRIMMED_MULTIQC_STEM}.html",
+		data_dir=directory(f"results/qc/trimmed_multiqc/{TRIMMED_MULTIQC_STEM}_data")
+	params:
+		report_root="results/qc/trimmed_multiqc",
+		report_name=f"{TRIMMED_MULTIQC_STEM}.html"
+	shell:
+		r"""
+		set -euo pipefail
+		mkdir -p {params.report_root}
+		multiqc \
+		  --force \
+		  --outdir "{params.report_root}" \
+		  --filename "{params.report_name}" \
+		  "results/qc/trimmed_fastqc" \
+		  "results/qc/trimmed_fastp"
 		"""
