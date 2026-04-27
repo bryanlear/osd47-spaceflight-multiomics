@@ -37,6 +37,18 @@ feature_counts:
   threads: 8
   output: results/counts/osd47_featureCounts.txt
 
+pydeseq2:
+  enabled: true
+  output_dir: results/pydeseq2
+  design_factor: condition
+  reference_level: BSL
+  contrast_level: FLT
+  all_pairwise: true
+  min_count: 10
+  min_samples: 3
+  alpha: 0.05
+  n_cpus: 8
+
 archives:
   - id: C-Ba-1
     file: GLDS-47_rna-seq_C-Ba-1.tar.gz

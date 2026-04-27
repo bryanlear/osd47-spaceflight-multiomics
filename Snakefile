@@ -36,8 +36,13 @@ FEATURE_COUNTS_TARGETS = (
 include: "workflow/rules/archive.smk"
 include: "workflow/rules/trimming.smk"
 include: "workflow/rules/alignment.smk"
+include: "workflow/rules/differential_expression.smk"
 
 
 rule all:
     input:
-        BASE_TARGETS + TRIMMING_TARGETS + ALIGNMENT_TARGETS + FEATURE_COUNTS_TARGETS
+        BASE_TARGETS
+        + TRIMMING_TARGETS
+        + ALIGNMENT_TARGETS
+        + FEATURE_COUNTS_TARGETS
+        + PYDESEQ2_TARGETS

@@ -161,8 +161,9 @@ e.g Output.,
 * Normalization in DESeq2: Accounts for sequencing depth and library composition $\rightarrow$ ensure gene expression levels are comparable across samples.
   * Geometric average is calculated with logs
   * Filter out `infinity` $\rightarrow$ Helps focus scaling factors on house keeping genes - scaling factors are based only on 'stable' genes that aren't jumping between 0 and high expression. Once scaling factors are determined they are then applied to **all** genes including tissue-specific ones
-  * Substract average `log(value)` from `log(counts)`
+  * Substract average log value from `log(counts)` $\rightarrow$ Ratio reads in each sample to avg. across all samples
   
+6. Calculate median of ratios for each sample (avoids large/outliers taking over)
 
 * DESeq2 and EdgeR are both based on negative bionomial modeling
   * EdgeR better at analyzing genes with low expression counts (dispersion estimation captures variability in t he *sparse* count data). 
