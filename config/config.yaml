@@ -27,6 +27,16 @@ alignment:
   threads: 8
   sort_threads: 4
 
+feature_counts:
+  enabled: true
+  tool: featureCounts
+  gtf: refs/ensembl_112/Mus_musculus.GRCm39.112.gtf
+  strandedness: 2
+  feature_type: exon
+  attribute_type: gene_id
+  threads: 8
+  output: results/counts/osd47_featureCounts.txt
+
 archives:
   - id: C-Ba-1
     file: GLDS-47_rna-seq_C-Ba-1.tar.gz

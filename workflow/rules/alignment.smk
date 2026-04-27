@@ -3,6 +3,8 @@ TRIMMING_ENABLED = TRIMMING.get("enabled", False)
 ALIGNMENT = config.get("alignment", {})
 ALIGNMENT_ENABLED = ALIGNMENT.get("enabled", False)
 ALIGNMENT_TOOL = ALIGNMENT.get("tool", "hisat2")
+FEATURE_COUNTS = config.get("feature_counts", {})
+FEATURE_COUNTS_ENABLED = FEATURE_COUNTS.get("enabled", False)
 ARCHIVE_IDS = [archive["id"] for archive in config["archives"]]
 
 
@@ -15,6 +17,17 @@ if ALIGNMENT_ENABLED and ALIGNMENT_TOOL != "hisat2":
 if ALIGNMENT_ENABLED and not ALIGNMENT.get("hisat2_index_base"):
 	raise ValueError("Alignment requires alignment.hisat2_index_base to be set.")
 
+if FEATURE_COUNTS_ENABLED and not ALIGNMENT_ENABLED:
+	raise ValueError("feature_counts requires alignment.enabled: true because it consumes alignment BAMs.")
+
+if FEATURE_COUNTS_ENABLED and FEATURE_COUNTS.get("tool", "featureCounts") != "featureCounts":
+	raise ValueError(
+		f"Unsupported feature counting tool: {FEATURE_COUNTS.get('tool')}"
+	)
+
+if FEATURE_COUNTS_ENABLED and not FEATURE_COUNTS.get("gtf"):
+	raise ValueError("feature_counts requires feature_counts.gtf to be set.")
+
 
 HISAT2_INDEX_BASE = ALIGNMENT.get("hisat2_index_base")
 HISAT2_INDEX_FILES = (
@@ -22,6 +35,7 @@ HISAT2_INDEX_FILES = (
 	if ALIGNMENT_ENABLED and HISAT2_INDEX_BASE
 	else []
 )
+FEATURE_COUNTS_OUTPUT = FEATURE_COUNTS.get("output", f"results/counts/{config['study']['accession'].lower().replace('-', '')}_featureCounts.txt")
 
 
 rule merge_trimmed_fastq:
@@ -89,4 +103,31 @@ rule align_trimmed_sample:
 
 		samtools index "{output.bam}" "{output.bai}"
 		samtools flagstat "{output.bam}" > "{output.flagstat}"
+		"""
+
+
+rule run_featurecounts:
+	input:
+		bams=expand("results/hisat2_alignments/{archive}.sorted.bam", archive=ARCHIVE_IDS)
+	output:
+		counts=FEATURE_COUNTS_OUTPUT,
+		summary=f"{FEATURE_COUNTS_OUTPUT}.summary"
+	threads:
+		lambda wildcards: FEATURE_COUNTS.get("threads", 8)
+	params:
+		gtf=lambda wildcards: FEATURE_COUNTS.get("gtf"),
+		strandedness=lambda wildcards: FEATURE_COUNTS.get("strandedness", 2),
+		feature_type=lambda wildcards: FEATURE_COUNTS.get("feature_type", "exon"),
+		attribute_type=lambda wildcards: FEATURE_COUNTS.get("attribute_type", "gene_id")
+	shell:
+		r"""
+		set -euo pipefail
+		mkdir -p "$(dirname "{output.counts}")"
+		featureCounts -T {threads} \
+		  -s {params.strandedness} \
+		  -t {params.feature_type} \
+		  -g {params.attribute_type} \
+		  -a "{params.gtf}" \
+		  -o "{output.counts}" \
+		  {input.bams}
 		"""
