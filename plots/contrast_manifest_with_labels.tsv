@@ -1,0 +1,4 @@
+contrast	contrast_level	reference_level	significant_gene_count	condition_pair
+condition_FLT_vs_BSL	FLT	BSL	1043	FLT vs BSL
+condition_FLT_vs_GC	FLT	GC	21	FLT vs GC
+condition_GC_vs_BSL	GC	BSL	332	GC vs BSL

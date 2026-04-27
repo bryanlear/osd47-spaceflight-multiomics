@@ -1,0 +1,4 @@
+contrast	tested_genes	significant_genes	up_genes	down_genes	strong_effect_genes	median_abs_log2fc	top_gene_by_padj
+condition_FLT_vs_BSL	14452	1043	601	442	232	0.6276534886173323	ENSMUSG00000028211
+condition_GC_vs_BSL	12901	332	178	154	79	0.650573911762679	ENSMUSG00000022797
+condition_FLT_vs_GC	16005	21	15	6	11	1.0127635239041286	ENSMUSG00000074794
