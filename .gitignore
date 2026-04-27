@@ -1,2 +1,6 @@
 *.zip
 results/
+*.gtf
+*.fa
+*.fasta
+*.gz

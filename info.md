@@ -124,3 +124,46 @@ genelab/extracted_rnaseq/C-FLT-4/C-FLT-4_S62_L007_R1_001.fastq.gz
 
 ---
 
+1. Build HIST2 genome index
+2. Merge trimmed lane FASTQs into FASTQ per biological sample before alignment
+3. Alignment:
+
+e.g Output., 
+
+* `C-Ba-1.hisat2.summary.txt`: $35,633,737$ input reads
+* $29,943,499$ reads ($84.03$%) aligned *once*
+* $5,164,864$ reads ($14.49$%), aligned once (multimapping)
+* Only $525,374$ reads ($1.47$) failed to align
+* Overall alignment rate $=98.53$%
+
+- In short-read single-end RNA-seq, especially at 50 bp, some reads will end up ambiguously in repetitive regions, gene families, pseudogenes, low-complexity sequence (common with 50bp)
+  - Mouse transcriptomes contain repetitive and homologous regions
+  - `525374 (1.47%) aligned 0 times` Little leftover contamination, adapter artifact, major reference mismatch
+
+---
+
+`-U` Single-end reads
+
+`--rna-strandness R` Dataset is reverse-stranded
+
+---
+
+4. Feature count: Count single-end reads against Ensembl exon features and summariz them to genes
+
+* Assigned counts: $25.8M$ to $30.7M$ (assigned fractions: $56.3$% and $58.1$%)
+* Default option: not count multiparameters
+* Wrong strands settings would drop instead of clustering around same value in every BAM.
+* Short reads are more likely to match multiple loci, paralogs, repeats, pseudogenes, or homologous transcript regions
+* Samples such as `C-FLT-4` have more assignedm reads because they're deeper libraries
+
+5. Normalization
+
+* Normalization in DESeq2: Accounts for sequencing depth and library composition $\rightarrow$ ensure gene expression levels are comparable across samples.
+  * Geometric average is calculated with logs
+  * Filter out `infinity` $\rightarrow$ Helps focus scaling factors on house keeping genes - scaling factors are based only on 'stable' genes that aren't jumping between 0 and high expression. Once scaling factors are determined they are then applied to **all** genes including tissue-specific ones
+  * Substract average `log(value)` from `log(counts)`
+  
+
+* DESeq2 and EdgeR are both based on negative bionomial modeling
+  * EdgeR better at analyzing genes with low expression counts (dispersion estimation captures variability in t he *sparse* count data). 
+

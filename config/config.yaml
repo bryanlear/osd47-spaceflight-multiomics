@@ -19,6 +19,14 @@ trimming:
   poly_x_min_len: 10
   threads: 4
 
+alignment:
+  enabled: true
+  tool: hisat2
+  hisat2_index_base: results/hisat2_index/workspace/ensembl_112/Mus_musculus.GRCm39.dna.primary_assembly
+  rna_strandness: R
+  threads: 8
+  sort_threads: 4
+
 archives:
   - id: C-Ba-1
     file: GLDS-47_rna-seq_C-Ba-1.tar.gz
