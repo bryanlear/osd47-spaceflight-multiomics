@@ -115,6 +115,38 @@ collect_annotation_files() {
   fi
 }
 
+validate_annotation_file() {
+  local annotation_path="$1"
+  local last_byte
+  local -a expected_labels=(126 127N 127C 128N 128C 129N 129C 130N 130C 131N)
+  local -a actual_labels=()
+  local index
+
+  if ! awk 'NF == 0 { next } NF != 2 { exit 1 }' "${annotation_path}"; then
+    echo "Annotation file must contain exactly two whitespace-separated columns per non-empty line: ${annotation_path}" >&2
+    return 1
+  fi
+
+  mapfile -t actual_labels < <(awk 'NF { print $1 }' "${annotation_path}")
+  if [[ ${#actual_labels[@]} -ne ${#expected_labels[@]} ]]; then
+    echo "Annotation file must contain exactly ${#expected_labels[@]} TMT-10 labels: ${annotation_path}" >&2
+    return 1
+  fi
+
+  for index in "${!expected_labels[@]}"; do
+    if [[ "${actual_labels[${index}]}" != "${expected_labels[${index}]}" ]]; then
+      echo "Annotation file labels must match IonQuant TMT-10 order: ${expected_labels[*]}" >&2
+      return 1
+    fi
+  done
+
+  last_byte="$(tail -c 1 "${annotation_path}" 2>/dev/null || true)"
+  if [[ -n "${last_byte}" ]]; then
+    echo "Annotation file must end with a trailing newline so the last channel is not dropped: ${annotation_path}" >&2
+    return 1
+  fi
+}
+
 write_manifest() {
   local manifest_path="$1"
   local experiment_name="$2"
@@ -288,8 +320,12 @@ run_inside_docker() {
   done < <(collect_docker_mounts "${repo_root}" "${mount_sources[@]}")
 
   docker_cmd+=(
+    -e "DEBIAN_FRONTEND=noninteractive"
     -w "${repo_root}"
     "${docker_image}"
+    bash
+    -lc
+    'if ! ldconfig -p 2>/dev/null | grep -q "libgomp.so.1"; then echo "Installing libgomp1 in Docker container" >&2; apt-get update >/dev/null && apt-get install -y --no-install-recommends libgomp1 >/dev/null; fi; exec bash "$1" "${@:2}"'
     bash
     "${script_dir}/$(basename -- "$0")"
     "${script_args[@]}"
@@ -499,6 +535,7 @@ main() {
 
   collect_mzml_files "${mzml_dir}"
   collect_annotation_files "${mzml_dir}"
+  validate_annotation_file "${ANNOTATION_FILES[0]}"
   require_search_tools "${tools_dir}"
   write_manifest "${manifest_path}" "${experiment_name}"
   copy_workflow "${fragpipe_dir}" "${workflow_name}" "${workflow_template}"
