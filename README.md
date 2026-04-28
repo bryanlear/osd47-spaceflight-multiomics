@@ -7,7 +7,7 @@
 - **GC**: Age-matched Ground Controls
 - **BC**: Basal controls (euthanized at time of launch)
 
-### Snakemake Pipeline
+### Snakemake Pipeline Bulk RNA-seq
 
 ```mermaid
 flowchart TD
@@ -68,7 +68,7 @@ flowchart TD
 	snakefile --> qc_stage
 ```
 
-### Examples volcano plots from normalized data
+### Examples volcano plots from normalized counts bulk RNA-seq
 
 ![FLT_BASE](plots/condition_FLT_vs_BSL.volcano.png)
 ![FLT_GC](plots/condition_FLT_vs_GC.volcano.png)
