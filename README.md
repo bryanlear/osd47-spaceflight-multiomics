@@ -5,7 +5,7 @@
 
 - **FLT**: Dissected on orbit 21/22 days after launch
 - **GC**: Age-matched Ground Controls
-- **BC**: Basal controls (euthanized at time of launch)
+- **BSL**: Basal controls (euthanized at time of launch)
 
 ### Snakemake Pipeline Bulk RNA-seq
 

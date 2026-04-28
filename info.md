@@ -171,3 +171,18 @@ e.g Output.,
 ---
 
 Multicellular program = Coordinated gene-expression pattern shared across multiple interacting cell types in a tissue, organoid, tumor, developmental system.
+
+---
+
+### Proteomics
+
+* Thermo Fisher instruments produce `.raw`
+  * contents:
+    * spectra
+    * scan metadata
+    * chromatographic information
+    * precursor/fragment ion information
+    * instrument settings
+* `.raw` $\rightarrow$ `.mzML`
+
+`.mzML` $\rightarrow$ Fragpipe
