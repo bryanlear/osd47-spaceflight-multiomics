@@ -33,6 +33,7 @@ VOLCANO_NEGATIVE_LABEL_OFFSETS = [(-8, 8), (-8, -12), (-10, 14), (-12, -18), (-6
 GENE_SYMBOL_PATTERN = re.compile(r"gene_symbol:([^ ]+)")
 EXPECTED_CONDITION_ORDER = ["BSL", "FLT", "GC"]
 CONTRAST_FILES = ["FLT_vs_BSL", "GC_vs_BSL", "FLT_vs_GC"]
+LINESTYLE_BY_REPLICATE = {1: "solid", 2: "dashed", 3: "dotted"}
 
 
 def default_output_dir() -> Path:
@@ -117,6 +118,13 @@ def save_figure(fig: plt.Figure, output_path: Path) -> None:
     plt.close(fig)
 
 
+def build_condition_legend_handles() -> list[Line2D]:
+    return [
+        Line2D([0], [0], color=color, linewidth=3, label=condition)
+        for condition, color in CONDITION_PALETTE.items()
+    ]
+
+
 def contrast_label(contrast_name: str) -> str:
     left, right = contrast_name.split("_vs_")
     return f"{left} vs {right}"
@@ -161,7 +169,7 @@ def filter_plot_matrix(
     sample_metadata: pd.DataFrame,
     modeled_ids: set[str],
     args: argparse.Namespace,
-) -> tuple[pd.DataFrame, pd.DataFrame, str]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, str]:
     annotations = annotations.copy()
     annotations["NumberPSM"] = pd.to_numeric(annotations["NumberPSM"], errors="coerce")
     annotations["MaxPepProb"] = pd.to_numeric(annotations["MaxPepProb"], errors="coerce")
@@ -190,13 +198,108 @@ def filter_plot_matrix(
 
     complete_case_matrix = filtered_matrix.dropna(axis=0, how="any")
     if len(complete_case_matrix.index) >= 2:
-        return complete_case_matrix, sample_metadata, "complete_cases"
+        return filtered_matrix, complete_case_matrix, sample_metadata, "complete_cases"
 
     imputed_matrix = filtered_matrix.apply(lambda row: row.fillna(row.mean()), axis=1)
     imputed_matrix = imputed_matrix.dropna(axis=0, how="any")
     if len(imputed_matrix.index) < 2:
         raise ValueError("Not enough proteins remain to build PCA and heatmap plots.")
-    return imputed_matrix, sample_metadata, "row_mean_imputed"
+    return filtered_matrix, imputed_matrix, sample_metadata, "row_mean_imputed"
+
+
+def save_intensity_boxplot(
+    filtered_matrix: pd.DataFrame,
+    sample_metadata: pd.DataFrame,
+    args: argparse.Namespace,
+) -> None:
+    sample_columns = sample_metadata["sample"].tolist()
+    fig, ax = plt.subplots(figsize=(12.0, 5.4))
+    box = ax.boxplot(
+        [filtered_matrix[sample].dropna().values for sample in sample_columns],
+        tick_labels=sample_columns,
+        patch_artist=True,
+        showfliers=False,
+    )
+    metadata_lookup = sample_metadata.set_index("sample")
+    for patch, sample in zip(box["boxes"], sample_columns):
+        patch.set_facecolor(CONDITION_PALETTE[str(metadata_lookup.loc[sample, "condition"] )])
+        patch.set_alpha(0.85)
+        patch.set_edgecolor(PLOT_NEUTRALS["ink"])
+        patch.set_linewidth(0.9)
+    for whisker in box["whiskers"]:
+        whisker.set_color(PLOT_NEUTRALS["ink"])
+    for cap in box["caps"]:
+        cap.set_color(PLOT_NEUTRALS["ink"])
+    for median in box["medians"]:
+        median.set_color(PLOT_NEUTRALS["ink"])
+        median.set_linewidth(1.3)
+    ax.set_ylabel("Protein abundance")
+    ax.set_title("Protein abundance distributions by sample")
+    ax.tick_params(axis="x", rotation=45, pad=8)
+    style_axis(ax, grid_axis="y")
+    ax.legend(
+        handles=build_condition_legend_handles(),
+        title="Condition",
+        frameon=False,
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+        borderaxespad=0.0,
+    )
+    fig.subplots_adjust(bottom=0.24, right=0.83)
+    save_figure(fig, args.output_dir / "sample_intensity_boxplot.png")
+
+
+def save_intensity_density_plot(
+    filtered_matrix: pd.DataFrame,
+    sample_metadata: pd.DataFrame,
+    args: argparse.Namespace,
+) -> None:
+    sample_columns = sample_metadata["sample"].tolist()
+    metadata_lookup = sample_metadata.set_index("sample")
+    all_values = filtered_matrix.loc[:, sample_columns].to_numpy(dtype=float).ravel()
+    all_values = all_values[~np.isnan(all_values)]
+    if all_values.size == 0:
+        raise ValueError("No observed protein intensities were available to draw sample density plots.")
+
+    global_min = float(all_values.min())
+    global_max = float(all_values.max())
+    if global_min == global_max:
+        global_min -= 0.5
+        global_max += 0.5
+    bins = np.linspace(global_min, global_max, 60)
+
+    fig, ax = plt.subplots(figsize=(10.8, 6.0))
+    for sample in sample_columns:
+        values = filtered_matrix[sample].dropna().to_numpy(dtype=float)
+        if values.size == 0:
+            continue
+        density, edges = np.histogram(values, bins=bins, density=True)
+        centers = (edges[:-1] + edges[1:]) / 2
+        replicate = int(metadata_lookup.loc[sample, "replicate"])
+        condition = str(metadata_lookup.loc[sample, "condition"])
+        ax.plot(
+            centers,
+            density,
+            label=sample,
+            color=CONDITION_PALETTE[condition],
+            linestyle=LINESTYLE_BY_REPLICATE.get(replicate, "solid"),
+            linewidth=1.8,
+            alpha=0.95,
+        )
+
+    ax.set_xlabel("Protein abundance")
+    ax.set_ylabel("Density")
+    ax.set_title("Protein abundance density by sample")
+    style_axis(ax, grid_axis="y")
+    ax.legend(
+        frameon=False,
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+        borderaxespad=0.0,
+        title="Sample",
+    )
+    fig.subplots_adjust(right=0.78)
+    save_figure(fig, args.output_dir / "sample_intensity_density.png")
 
 
 def select_volcano_labels(result: pd.DataFrame, alpha: float, labels_per_direction: int) -> pd.DataFrame:
@@ -437,10 +540,17 @@ def save_top_variable_heatmap(
     save_figure(fig, args.output_dir / "top_variable_proteins_heatmap.png")
 
 
-def save_plot_summary(plot_matrix: pd.DataFrame, matrix_mode: str, sample_metadata: pd.DataFrame, args: argparse.Namespace) -> None:
+def save_plot_summary(
+    filtered_matrix: pd.DataFrame,
+    plot_matrix: pd.DataFrame,
+    matrix_mode: str,
+    sample_metadata: pd.DataFrame,
+    args: argparse.Namespace,
+) -> None:
     summary = pd.DataFrame(
         [
             {"metric": "plot_matrix_mode", "value": matrix_mode},
+            {"metric": "proteins_in_distribution_matrix", "value": int(len(filtered_matrix.index))},
             {"metric": "proteins_in_plot_matrix", "value": int(len(plot_matrix.index))},
             {"metric": "samples_in_plot_matrix", "value": int(len(sample_metadata.index))},
             {"metric": "heatmap_proteins", "value": int(min(args.heatmap_proteins, len(plot_matrix.index)))},
@@ -458,7 +568,7 @@ def main() -> None:
     abundance_matrix[args.id_column] = abundance_matrix[args.id_column].astype(str)
     annotations[args.id_column] = annotations[args.id_column].astype(str)
 
-    plot_matrix, ordered_metadata, matrix_mode = filter_plot_matrix(
+    filtered_matrix, plot_matrix, ordered_metadata, matrix_mode = filter_plot_matrix(
         annotations,
         abundance_matrix,
         sample_metadata,
@@ -467,13 +577,15 @@ def main() -> None:
     )
     plot_matrix.to_csv(args.output_dir / f"protein_plot_matrix.{matrix_mode}.tsv", sep="\t")
 
+    save_intensity_boxplot(filtered_matrix, ordered_metadata, args)
+    save_intensity_density_plot(filtered_matrix, ordered_metadata, args)
     save_volcano_plots(annotations, args)
     save_pca_plot(plot_matrix, ordered_metadata, args)
     save_sample_correlation_heatmap(plot_matrix, ordered_metadata, args)
     save_top_variable_heatmap(plot_matrix, annotations, ordered_metadata, args)
-    save_plot_summary(plot_matrix, matrix_mode, ordered_metadata, args)
+    save_plot_summary(filtered_matrix, plot_matrix, matrix_mode, ordered_metadata, args)
 
-    print(f"Wrote volcano, PCA, and heatmap plots to {args.output_dir}")
+    print(f"Wrote intensity distribution, volcano, PCA, and heatmap plots to {args.output_dir}")
 
 
 if __name__ == "__main__":
