@@ -43,7 +43,3 @@ flowchart TD
 1. `.raw` $\rightarrow$ `mzML`
 2. `mzML` + [FragPipe](https://fragpipe.nesvilab.org/) $\rightarrow$ quantitative proteomics analyses at different resolutions (e.g., gene-leve, protein-level)
 
-### Example UMAP from abundance data peptide, gene-lvl (Proteomic):
-
-![peptide-lvl](proteomics/umap/peptide_umap.png)
-![gene-lvl](proteomics/umap/gene_umap.png)
