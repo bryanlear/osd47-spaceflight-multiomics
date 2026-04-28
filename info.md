@@ -168,3 +168,6 @@ e.g Output.,
 * DESeq2 and EdgeR are both based on negative bionomial modeling
   * EdgeR better at analyzing genes with low expression counts (dispersion estimation captures variability in t he *sparse* count data). 
 
+---
+
+Multicellular program = Coordinated gene-expression pattern shared across multiple interacting cell types in a tissue, organoid, tumor, developmental system.

@@ -4,3 +4,5 @@ results/
 *.fa
 *.fasta
 *.gz
+*.raw
+*.mzML
