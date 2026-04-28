@@ -7,7 +7,7 @@
 - **GC**: Age-matched Ground Controls
 - **BSL**: Basal controls (euthanized at time of launch)
 
-### Snakemake Pipeline Bulk RNA-seq
+## Snakemake Pipeline Bulk RNA-seq
 
 ```mermaid
 flowchart TD
@@ -33,7 +33,17 @@ flowchart TD
 	snakefile --> archive
 ```
 
-### Examples volcano plots from normalized counts bulk RNA-seq
+### Example volcano plots from normalized counts (Bulk RNA-seq):
 
 ![FLT_BASE](plots/condition_FLT_vs_BSL.volcano.png)
 ![FLT_GC](plots/condition_FLT_vs_GC.volcano.png)
+
+## Proteomics
+
+1. `.raw` $\rightarrow$ `mzML`
+2. `mzML` + [FragPipe](https://fragpipe.nesvilab.org/) $\rightarrow$ quantitative proteomics analyses at different resolutions (e.g., gene-leve, protein-level)
+
+### Example UMAP from abundance data peptide, gene-lvl (Proteomic):
+
+![peptide-lvl](proteomics/umap/peptide_umap.png)
+![gene-lvl](proteomics/umap/gene_umap.png)

@@ -17,3 +17,4 @@ proteomics/fragpipe_headless.md
 *.mzBIN_calibrated
 *.pin
 *.pepXML
+*.tsv
