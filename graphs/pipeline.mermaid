@@ -1,103 +1,96 @@
 flowchart LR
-    GOAL[Goal:<br/>Convert OSD-47 raw archives into a reproducible sample sheet,<br/>QC report, count matrix, and differential expression results]
+    classDef control fill:#F3F4F6,stroke:#4B5563,color:#111827,stroke-width:1.2px;
+    classDef config fill:#FFF4E6,stroke:#D17B0F,color:#111827,stroke-width:1.2px;
+    classDef input fill:#EEF4FF,stroke:#4C78A8,color:#111827;
+    classDef rule fill:#F9F6E7,stroke:#B8871B,color:#111827;
+    classDef output fill:#EDF7ED,stroke:#4E8F5C,color:#111827;
 
-    subgraph INPUTS[OSD-47 Inputs]
-        I1[Raw archives<br/>GLDS-47_rna-seq_C-Ba-1/2/3.tar.gz<br/>GLDS-47_rna-seq_C-FLT-1/2/4.tar.gz<br/>GLDS-47_rna-seq_C-GC-2/3/5.tar.gz]
-        I2[Checksum table<br/>GLDS-47_rna-seq_raw_md5sum_GLbulkRNAseq.tsv]
-        I3[Study metadata<br/>OSD-47 ISA archive and factor annotations]
-        I4[Reference assets<br/>mouse FASTA and GTF]
+    snakefile[Snakefile<br/>rule all]:::control
+    config[config/config.yaml]:::config
+
+    subgraph ARCHIVE[workflow/rules/archive.smk]
+        raw_archives[input_dir + GLDS-47_rna-seq_*.tar.gz]:::input
+        build_archive_manifest[build_archive_manifest]:::rule
+        archive_manifest[results/metadata/archive_manifest.tsv]:::output
+        extract_archive[extract_archive]:::rule
+        extracted_ok[results/extracted/archive_id/.extracted.ok]:::output
+        build_lane_manifest[build_lane_manifest]:::rule
+        lane_manifest[results/metadata/lane_manifest.tsv]:::output
+
+        raw_archives --> build_archive_manifest --> archive_manifest
+        raw_archives --> extract_archive --> extracted_ok --> build_lane_manifest --> lane_manifest
     end
 
-    subgraph PROCESSES[Nextflow-style Processes]
-        P1[VERIFY_ARCHIVES]
-        P2[EXTRACT_ARCHIVES] 
-        P3[CONCAT_LANES_PER_SAMPLE]
-        P4[BUILD_SAMPLESHEET]
-        P5[FASTQC_RAW]
-        P6[TRIM_READS<br/>fastp or Trim Galore]
-        P7[FASTQC_TRIMMED]
-        P8[BUILD_REFERENCE_INDEX]
-        P9[ALIGN_READS<br/>STAR]
-        P10[RNA_QC<br/>RSeQC]
-        P11[QUANTIFY_COUNTS<br/>featureCounts or RSEM]
-        P12[MERGE_COUNT_MATRIX]
-        P13[DESEQ2_ANALYSIS]
-        P14[MULTIQC_AND_REPORT]
+    subgraph TRIMMING[workflow/rules/trimming.smk]
+        trim_lanes[trim_lanes<br/>fastp on each lane]:::rule
+        trimmed_reads[results/trimmed/archive_id/lane.trimmed.fastq.gz]:::output
+        trimmed_ok[results/trimmed/.trimmed.ok]:::output
+        run_trimmed_fastqc[run_trimmed_fastqc]:::rule
+        fastqc_ok[results/qc/trimmed_fastqc/.fastqc.ok]:::output
+        trimmed_fastqc[results/qc/trimmed_fastqc/*.html and *.zip]:::output
+        run_trimmed_multiqc[run_trimmed_multiqc]:::rule
+        trimmed_multiqc[results/qc/trimmed_multiqc/osd47_trimmed_multiqc.html]:::output
+
+        lane_manifest --> trim_lanes
+        trim_lanes --> trimmed_reads
+        trim_lanes --> trimmed_ok
+        lane_manifest --> run_trimmed_fastqc
+        trimmed_ok --> run_trimmed_fastqc
+        run_trimmed_fastqc --> fastqc_ok
+        run_trimmed_fastqc --> trimmed_fastqc
+        trimmed_ok --> run_trimmed_multiqc
+        fastqc_ok --> run_trimmed_multiqc --> trimmed_multiqc
     end
 
-    subgraph OUTPUTS[Explicit Outputs]
-        O1[validated_archives.tsv]
-        O2[extracted_fastq/<br/>lane-level FASTQ.gz]
-        O3[raw_fastq/<br/>one merged FASTQ.gz per OSD-47 sample]
-        O4[samplesheet.csv<br/>sample_id, condition, replicate, fastq]
-        O5[qc/raw_fastqc/*]
-        O6[trimmed_fastq/*<br/>trimming logs]
-        O7[qc/trimmed_fastqc/*]
-        O8[reference/index/*]
-        O9[align/*.bam and *.bai]
-        O10[qc/rseqc/*]
-        O11[counts/sample_counts/*]
-        O12[counts/raw_counts_matrix.tsv]
-        O13[results/normalized_counts.tsv<br/>results/vst_counts.tsv<br/>results/Ba_vs_FLT.tsv<br/>results/Ba_vs_GC.tsv<br/>results/FLT_vs_GC.tsv]
-        O14[reports/multiqc.html<br/>reports/osd47_pipeline_summary.html<br/>figures/PCA_volcano_heatmap]
+    subgraph ALIGNMENT[workflow/rules/alignment.smk]
+        hisat2_index[results/hisat2_index/...*.ht2]:::input
+        gtf[refs/ensembl_112/Mus_musculus.GRCm39.112.gtf]:::input
+        merge_trimmed_fastq[merge_trimmed_fastq<br/>merge lanes per archive]:::rule
+        merged_fastq[results/merged_trimmed/archive_id.trimmed.fastq.gz]:::output
+        align_trimmed_sample[align_trimmed_sample<br/>hisat2 + samtools sort/index]:::rule
+        bam_bundle[results/hisat2_alignments/archive.sorted.bam<br/>+.bai + hisat2 summary + flagstat]:::output
+        run_featurecounts[run_featurecounts<br/>featureCounts]:::rule
+        featurecounts_out[results/counts/osd47_featureCounts.txt<br/>+.summary]:::output
+
+        lane_manifest --> merge_trimmed_fastq
+        trimmed_ok --> merge_trimmed_fastq
+        merge_trimmed_fastq --> merged_fastq --> align_trimmed_sample
+        hisat2_index --> align_trimmed_sample
+        align_trimmed_sample --> bam_bundle --> run_featurecounts
+        gtf --> run_featurecounts
+        run_featurecounts --> featurecounts_out
     end
 
-    GOAL --> I1
-    GOAL --> I3
-    GOAL --> I4
+    subgraph DIFFEXP[workflow/rules/differential_expression.smk]
+        run_pydeseq2[run_pydeseq2<br/>workflow/scripts/run_pydeseq2.py]:::rule
+        pydeseq2_out[results/pydeseq2_all/<br/>sample_metadata.tsv<br/>counts_matrix.samples_x_genes.tsv<br/>contrast_manifest.tsv<br/>condition_*.tsv<br/>condition_*.significant.tsv]:::output
+        run_qc_diff_exp[run_qc_diff_exp_analysis<br/>workflow/scripts/qc_diff_exp_analysis.py]:::rule
+        qc_diff_exp_out[results/pydeseq2_all/qc_diff_exp/<br/>library/QC plots<br/>volcano plots<br/>top_up and top_down TSVs<br/>report.md]:::output
 
-    I1 --> P1
-    I2 --> P1
-    P1 --> O1
+        featurecounts_out --> run_pydeseq2 --> pydeseq2_out --> run_qc_diff_exp --> qc_diff_exp_out
+        gtf --> run_qc_diff_exp
+    end
 
-    O1 --> P2
-    I1 --> P2
-    P2 --> O2
+    snakefile --> archive_manifest
+    snakefile --> lane_manifest
+    snakefile --> trimmed_multiqc
+    snakefile --> bam_bundle
+    snakefile --> featurecounts_out
+    snakefile --> pydeseq2_out
+    snakefile --> qc_diff_exp_out
 
-    O2 --> P3
-    P3 --> O3
+    cfg_core[study, archives, outputs]:::config
+    cfg_input[input_dir]:::config
+    cfg_trim[trimming.enabled and trimming settings]:::config
+    cfg_align[alignment.enabled and alignment settings]:::config
+    cfg_counts[feature_counts.enabled and count settings]:::config
+    cfg_pydeseq[pydeseq2.enabled and DE settings]:::config
+    cfg_qc[pydeseq2 alpha and GTF path]:::config
 
-    O3 --> P4
-    I3 --> P4
-    P4 --> O4
-
-    O3 --> P5
-    P5 --> O5
-
-    O3 --> P6
-    P6 --> O6
-
-    O6 --> P7
-    P7 --> O7
-
-    I4 --> P8
-    P8 --> O8
-
-    O6 --> P9
-    O4 --> P9
-    O8 --> P9
-    P9 --> O9
-
-    O9 --> P10
-    I4 --> P10
-    P10 --> O10
-
-    O9 --> P11
-    O4 --> P11
-    I4 --> P11
-    P11 --> O11
-
-    O11 --> P12
-    O4 --> P12
-    P12 --> O12
-
-    O12 --> P13
-    O4 --> P13
-    I3 --> P13
-    P13 --> O13
-
-    O5 --> P14
-    O7 --> P14
-    O10 --> P14
-    O13 --> P14
-    P14 --> O14
+    config -.-> cfg_core --> snakefile
+    config -.-> cfg_input --> raw_archives
+    config -.-> cfg_trim --> trim_lanes
+    config -.-> cfg_align --> align_trimmed_sample
+    config -.-> cfg_counts --> run_featurecounts
+    config -.-> cfg_pydeseq --> run_pydeseq2
+    config -.-> cfg_qc --> run_qc_diff_exp

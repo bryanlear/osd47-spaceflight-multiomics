@@ -35,7 +35,7 @@ PLOT_NEUTRALS = {
 }
 
 PCA_LABEL_OFFSETS = [(4, 4), (4, -10), (6, 10), (-28, 4), (6, -12)]
-VOLCANO_LABEL_COUNT = 10
+VOLCANO_LABELS_PER_DIRECTION = 5
 VOLCANO_POSITIVE_LABEL_OFFSETS = [(8, 8), (8, -12), (10, 14), (12, -18), (6, 20)]
 VOLCANO_NEGATIVE_LABEL_OFFSETS = [(-8, 8), (-8, -12), (-10, 14), (-12, -18), (-6, 20)]
 GENE_ID_PATTERN = re.compile(r'gene_id "([^"]+)"')
@@ -190,19 +190,31 @@ def load_gene_name_map(gtf_path: Path | None) -> dict[str, str]:
     return gene_names
 
 
-def select_volcano_labels(result: pd.DataFrame, alpha: float, label_count: int) -> pd.DataFrame:
+def select_volcano_labels(result: pd.DataFrame, alpha: float, labels_per_direction: int) -> pd.DataFrame:
     candidates = result.loc[result["padj"].notna() & (result["padj"] < alpha)].copy()
     if candidates.empty:
         return candidates
 
     candidates["abs_log2FoldChange"] = candidates["log2FoldChange"].abs()
-    return candidates.sort_values(["padj", "abs_log2FoldChange"], ascending=[True, False]).head(label_count)
+    up = candidates.loc[candidates["log2FoldChange"] > 0].sort_values(
+        ["padj", "abs_log2FoldChange"], ascending=[True, False]
+    ).head(labels_per_direction)
+    down = candidates.loc[candidates["log2FoldChange"] < 0].sort_values(
+        ["padj", "abs_log2FoldChange"], ascending=[True, False]
+    ).head(labels_per_direction)
+    return pd.concat([up, down], axis=0).sort_values(["padj", "abs_log2FoldChange"], ascending=[True, False])
 
 
 def annotate_volcano_labels(ax: plt.Axes, labels: pd.DataFrame) -> None:
+    positive_index = 0
+    negative_index = 0
     for index, row in enumerate(labels.itertuples(index=False)):
-        offsets = VOLCANO_POSITIVE_LABEL_OFFSETS if row.log2FoldChange >= 0 else VOLCANO_NEGATIVE_LABEL_OFFSETS
-        dx, dy = offsets[index % len(offsets)]
+        if row.log2FoldChange >= 0:
+            dx, dy = VOLCANO_POSITIVE_LABEL_OFFSETS[positive_index % len(VOLCANO_POSITIVE_LABEL_OFFSETS)]
+            positive_index += 1
+        else:
+            dx, dy = VOLCANO_NEGATIVE_LABEL_OFFSETS[negative_index % len(VOLCANO_NEGATIVE_LABEL_OFFSETS)]
+            negative_index += 1
         ax.annotate(
             row.plot_label,
             (row.log2FoldChange, row.neg_log10_padj),
@@ -427,7 +439,7 @@ def summarize_contrast(
 
     finite_padj = result["padj"].replace(0, np.nextafter(0, 1))
     neg_log10 = -np.log10(finite_padj)
-    label_candidates = select_volcano_labels(result, alpha, VOLCANO_LABEL_COUNT)
+    label_candidates = select_volcano_labels(result, alpha, VOLCANO_LABELS_PER_DIRECTION)
     if not label_candidates.empty:
         label_candidates = label_candidates.copy()
         label_candidates["neg_log10_padj"] = -np.log10(label_candidates["padj"].replace(0, np.nextafter(0, 1)))

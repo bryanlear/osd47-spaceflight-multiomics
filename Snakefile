@@ -46,3 +46,4 @@ rule all:
         + ALIGNMENT_TARGETS
         + FEATURE_COUNTS_TARGETS
         + PYDESEQ2_TARGETS
+        + QC_DIFF_EXP_TARGETS

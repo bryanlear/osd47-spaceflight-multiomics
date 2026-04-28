@@ -39,7 +39,8 @@ feature_counts:
 
 pydeseq2:
   enabled: true
-  output_dir: results/pydeseq2
+  python_executable: /anaconda3/envs/rnaseq-qc/bin/python
+  output_dir: results/pydeseq2_all
   design_factor: condition
   reference_level: BSL
   contrast_level: FLT
