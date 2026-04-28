@@ -40,6 +40,31 @@ flowchart TD
 
 ## Proteomics
 
+```mermaid
+flowchart LR
+	classDef input fill:#EEF4FF,stroke:#4C78A8,color:#111827,stroke-width:1.1px;
+	classDef stage fill:#F9F6E7,stroke:#B8871B,color:#111827,stroke-width:1.2px;
+	classDef output fill:#EDF7ED,stroke:#4E8F5C,color:#111827,stroke-width:1.1px;
+
+	raw[Orbitrap .raw files]:::input --> mzml[mzML conversion<br/>msconvert or ThermoRawFileParser]:::stage
+	mzml --> fragpipe[FragPipe<br/>ID and TMT quantification]:::stage
+	fragpipe --> fragout[combined_protein.tsv<br/>abundance_protein_MD.tsv]:::output
+
+	subgraph postfrag[post_frag_pipeline]
+		prep[prepare_protein_de_inputs.py]:::stage
+		fit[fit_protein_linear_models.py]:::stage
+		plot[plot_protein_linear_model_results.py]:::stage
+		qc[compute_tissue_marker_qc.py]:::stage
+	end
+
+	fragout --> prep --> fit
+	prep --> qc
+	fit --> plot
+	fit --> de[Differential abundance tables]:::output
+	plot --> figs[PCA, volcano, density, heatmaps]:::output
+	qc --> markers[Tissue-marker QC tables]:::output
+```
+
 1. `.raw` $\rightarrow$ `mzML`
 2. `mzML` + [FragPipe](https://fragpipe.nesvilab.org/) $\rightarrow$ quantitative proteomics analyses at different resolutions (e.g., gene-leve, protein-level)
 
