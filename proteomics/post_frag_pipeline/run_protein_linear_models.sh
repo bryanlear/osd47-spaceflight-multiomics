@@ -29,7 +29,7 @@ fi
 
 echo "Using Python: $python_bin"
 
-if ! "$python_bin" -c "import matplotlib, numpy, pandas, statsmodels" >/dev/null 2>&1; then
+if ! "$python_bin" -c "import matplotlib, numpy, pandas, scipy, statsmodels" >/dev/null 2>&1; then
     echo "Missing Python packages. Install them with:" >&2
     echo "  $python_bin -m pip install -r $script_dir/requirements.protein_de.txt" >&2
     exit 1

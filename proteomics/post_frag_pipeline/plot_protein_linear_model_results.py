@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.lines import Line2D
+from scipy.cluster.hierarchy import dendrogram, linkage
 
 
 CONDITION_PALETTE = {
@@ -99,6 +100,12 @@ def parse_args() -> argparse.Namespace:
         default=50,
         help="Number of highest-variance proteins to include in the protein heatmap.",
     )
+    parser.add_argument(
+        "--exclude-samples",
+        nargs="*",
+        default=[],
+        help="Sample names to exclude from the sample-dependent plots and plot-sidecar TSV files.",
+    )
     return parser.parse_args()
 
 
@@ -186,6 +193,20 @@ def filter_plot_matrix(
         ordered=True,
     )
     sample_metadata = sample_metadata.sort_values(["condition", "replicate"]).reset_index(drop=True)
+
+    excluded_samples = [sample for sample in args.exclude_samples if sample]
+    if excluded_samples:
+        missing_samples = sorted(set(excluded_samples) - set(sample_metadata["sample"]))
+        if missing_samples:
+            raise ValueError(
+                "Requested excluded sample(s) were not found in sample_metadata.tsv: "
+                + ", ".join(missing_samples)
+            )
+        sample_metadata = sample_metadata.loc[~sample_metadata["sample"].isin(excluded_samples)].reset_index(drop=True)
+
+    if len(sample_metadata.index) < 2:
+        raise ValueError("At least two samples are required after sample exclusion to build PCA and heatmap plots.")
+
     sample_columns = sample_metadata["sample"].tolist()
 
     filtered_matrix = abundance_matrix.loc[
@@ -524,19 +545,63 @@ def save_top_variable_heatmap(
     annotation_lookup = annotations.set_index(args.id_column, drop=False)
     display_labels = [protein_label(annotation_lookup.loc[protein_id], args.id_column) for protein_id in top_ids]
 
-    zscore_matrix.to_csv(args.output_dir / "top_variable_proteins.zscore_matrix.tsv", sep="\t")
+    if len(top_ids) >= 2:
+        linkage_matrix = linkage(zscore_matrix.values, method="average", metric="euclidean")
+        dendro = dendrogram(linkage_matrix, orientation="left", no_plot=True)
+        order = dendro["leaves"]
+        ordered_ids = [top_ids[index] for index in order]
+    else:
+        ordered_ids = top_ids
 
-    fig, ax = plt.subplots(figsize=(8.8, max(7.0, len(top_ids) * 0.22)))
-    image = ax.imshow(zscore_matrix.values, aspect="auto", cmap="RdBu_r", vmin=-2.5, vmax=2.5)
-    ax.set_xticks(range(len(zscore_matrix.columns)))
-    ax.set_xticklabels(zscore_matrix.columns, rotation=45, ha="right", rotation_mode="anchor")
-    ax.set_yticks(range(len(display_labels)))
-    ax.set_yticklabels(display_labels)
-    ax.set_title(f"Top {len(top_ids)} most variable modeled proteins")
-    for idx, sample in enumerate(zscore_matrix.columns):
+    ordered_zscore = zscore_matrix.loc[ordered_ids]
+    ordered_labels = [protein_label(annotation_lookup.loc[protein_id], args.id_column) for protein_id in ordered_ids]
+
+    ordered_zscore.to_csv(args.output_dir / "top_variable_proteins.zscore_matrix.tsv", sep="\t")
+    pd.DataFrame(
+        {
+            args.id_column: ordered_ids,
+            "label": ordered_labels,
+        }
+    ).to_csv(args.output_dir / "top_variable_proteins.cluster_order.tsv", sep="\t", index=False)
+
+    fig = plt.figure(figsize=(12.2, max(7.0, len(top_ids) * 0.22)))
+    grid = fig.add_gridspec(1, 4, width_ratios=[0.28, 1.0, 0.24, 0.06], wspace=0.06)
+    dendro_ax = fig.add_subplot(grid[0, 0])
+    heatmap_ax = fig.add_subplot(grid[0, 1])
+    label_ax = fig.add_subplot(grid[0, 2], sharey=heatmap_ax)
+    colorbar_ax = fig.add_subplot(grid[0, 3])
+
+    if len(top_ids) >= 2:
+        dendrogram(
+            linkage_matrix,
+            orientation="left",
+            ax=dendro_ax,
+            color_threshold=0,
+            above_threshold_color=PLOT_NEUTRALS["ink"],
+            no_labels=True,
+        )
+    dendro_ax.invert_yaxis()
+    dendro_ax.axis("off")
+
+    image = heatmap_ax.imshow(ordered_zscore.values, aspect="auto", cmap="RdBu_r", vmin=-2.5, vmax=2.5)
+    heatmap_ax.set_xticks(range(len(ordered_zscore.columns)))
+    heatmap_ax.set_xticklabels(ordered_zscore.columns, rotation=45, ha="right", rotation_mode="anchor")
+    heatmap_ax.set_yticks(range(len(ordered_labels)))
+    heatmap_ax.set_yticklabels([])
+    heatmap_ax.set_title(f"Hierarchically clustered top {len(top_ids)} variable modeled proteins")
+    for idx, sample in enumerate(ordered_zscore.columns):
         condition = str(sample_metadata.loc[sample_metadata["sample"] == sample, "condition"].iloc[0])
-        ax.get_xticklabels()[idx].set_color(CONDITION_PALETTE[condition])
-    fig.colorbar(image, ax=ax, label="Row z-score", fraction=0.046, pad=0.04)
+        heatmap_ax.get_xticklabels()[idx].set_color(CONDITION_PALETTE[condition])
+
+    label_ax.set_xlim(0, 1)
+    label_ax.set_xticks([])
+    label_ax.set_yticks([])
+    label_ax.set_ylim(heatmap_ax.get_ylim())
+    for row_index, label in enumerate(ordered_labels):
+        label_ax.text(0.0, row_index, label, va="center", ha="left", color=PLOT_NEUTRALS["ink"])
+    label_ax.axis("off")
+
+    fig.colorbar(image, cax=colorbar_ax, label="Row z-score")
     save_figure(fig, args.output_dir / "top_variable_proteins_heatmap.png")
 
 
@@ -550,6 +615,10 @@ def save_plot_summary(
     summary = pd.DataFrame(
         [
             {"metric": "plot_matrix_mode", "value": matrix_mode},
+            {
+                "metric": "excluded_samples",
+                "value": ",".join(args.exclude_samples) if args.exclude_samples else "none",
+            },
             {"metric": "proteins_in_distribution_matrix", "value": int(len(filtered_matrix.index))},
             {"metric": "proteins_in_plot_matrix", "value": int(len(plot_matrix.index))},
             {"metric": "samples_in_plot_matrix", "value": int(len(sample_metadata.index))},

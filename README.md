@@ -43,23 +43,23 @@ flowchart TD
 1. `.raw` $\rightarrow$ `mzML`
 2. `mzML` + [FragPipe](https://fragpipe.nesvilab.org/) $\rightarrow$ quantitative proteomics analyses at different resolutions (e.g., gene-leve, protein-level)
 
-![PROTEOM](proteomics/post_frag_pipeline/results/fragpipe_tmt10_ms3_run3_protein_de/pca_plot.png)
+Sample-level tissue-marker QC scores (mean per-gene z-scores across muscle and liver marker panels):
 
-GC_Rep1 $\rightarrow$ driving large part of protein abundance structure. Within-group CG heterogeneity is high $\rightarrow$ caution
+| sample | liver | muscle | muscle_minus_liver |
+| --- | ---: | ---: | ---: |
+| BSL_Rep1 | -0.843 | -0.636 | 0.208 |
+| BSL_Rep2 | -0.739 | -0.633 | 0.106 |
+| BSL_Rep3 | 0.079 | -0.437 | -0.516 |
+| FLT_Rep1 | 0.852 | -0.572 | -1.423 |
+| FLT_Rep2 | -0.128 | 0.034 | 0.162 |
+| FLT_Rep3 | 0.369 | -0.431 | -0.800 |
+| GC_Rep1 | -0.301 | 2.371 | 2.672 |
+| GC_Rep2 | 0.439 | -0.350 | -0.789 |
+| GC_Rep3 | 0.273 | 0.654 | 0.380 |
 
-Top PC1 protein loadings from centered SVD PCA on the complete-case protein abundance matrix. Positive loadings indicate proteins contributing most strongly to samples on the positive side of PC1.
+* GC_Rep1 possibly contaminated with muscle tissue
+* Exclude all GC_rep for this run
 
-| Gene | Protein | PC1 loading | abs loading |
-| --- | --- | ---: | ---: |
-| Mb | ENSMUSP00000019037.9 | 0.1452 | 0.1452 |
-| Mylpf | ENSMUSP00000032910.7 | 0.1389 | 0.1389 |
-| Cryab | ENSMUSP00000034562.8 | 0.1339 | 0.1339 |
-| Tnnt1 | ENSMUSP00000071704.7 | 0.1324 | 0.1324 |
-| Chgb | ENSMUSP00000028826.4 | 0.1300 | 0.1300 |
-| Tnni2 | ENSMUSP00000101591.2 | 0.1292 | 0.1292 |
-| Myl3 | ENSMUSP00000078715.8 | 0.1286 | 0.1286 |
-| Ckm | ENSMUSP00000146972.2 | 0.1257 | 0.1257 |
-| Myl1 | ENSMUSP00000112861.2 | 0.1251 | 0.1251 |
-| Hsd3b1 | ENSMUSP00000029465.8 | 0.1250 | 0.1250 |
+![heatmap](plots/heatmap_proteome_no_GC.png)
 
-Dominated by muscle/contractile proteins. 
+
