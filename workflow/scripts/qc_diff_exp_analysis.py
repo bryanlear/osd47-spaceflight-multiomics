@@ -190,8 +190,8 @@ def load_gene_name_map(gtf_path: Path | None) -> dict[str, str]:
     return gene_names
 
 
-def select_volcano_labels(result: pd.DataFrame, alpha: float, labels_per_direction: int) -> pd.DataFrame:
-    candidates = result.loc[result["padj"].notna() & (result["padj"] < alpha)].copy()
+def select_volcano_labels(result: pd.DataFrame, alpha: float, lfc_threshold: float, labels_per_direction: int) -> pd.DataFrame:
+    candidates = result.loc[result["padj"].notna() & (result["padj"] < alpha) & (result["log2FoldChange"].abs() >= lfc_threshold)].copy()
     if candidates.empty:
         return candidates
 
@@ -439,16 +439,19 @@ def summarize_contrast(
 
     finite_padj = result["padj"].replace(0, np.nextafter(0, 1))
     neg_log10 = -np.log10(finite_padj)
-    label_candidates = select_volcano_labels(result, alpha, VOLCANO_LABELS_PER_DIRECTION)
+    label_candidates = select_volcano_labels(result, alpha, lfc_threshold, VOLCANO_LABELS_PER_DIRECTION)
     if not label_candidates.empty:
         label_candidates = label_candidates.copy()
         label_candidates["neg_log10_padj"] = -np.log10(label_candidates["padj"].replace(0, np.nextafter(0, 1)))
         label_candidates["plot_label"] = label_candidates["Geneid"].map(gene_name_map).fillna(label_candidates["Geneid"])
+    sig_outside_mask = result["padj"].notna() & (result["padj"] < alpha) & (result["log2FoldChange"].abs() >= lfc_threshold)
     fig, ax = plt.subplots(figsize=(8.2, 5.8))
-    nonsig_mask = ~(result["padj"].notna() & (result["padj"] < alpha))
+    nonsig_mask = ~sig_outside_mask
     ax.scatter(result.loc[nonsig_mask, "log2FoldChange"], neg_log10.loc[nonsig_mask], s=12, c=PLOT_NEUTRALS["nonsig"], alpha=0.65)
-    ax.scatter(up["log2FoldChange"], -np.log10(up["padj"].replace(0, np.nextafter(0, 1))), s=18, c=PLOT_NEUTRALS["sig_up"], alpha=0.82)
-    ax.scatter(down["log2FoldChange"], -np.log10(down["padj"].replace(0, np.nextafter(0, 1))), s=18, c=PLOT_NEUTRALS["sig_down"], alpha=0.82)
+    sig_outside_up = result.loc[sig_outside_mask & (result["log2FoldChange"] > 0)]
+    sig_outside_down = result.loc[sig_outside_mask & (result["log2FoldChange"] < 0)]
+    ax.scatter(sig_outside_up["log2FoldChange"], -np.log10(sig_outside_up["padj"].replace(0, np.nextafter(0, 1))), s=18, c=PLOT_NEUTRALS["sig_up"], alpha=0.82)
+    ax.scatter(sig_outside_down["log2FoldChange"], -np.log10(sig_outside_down["padj"].replace(0, np.nextafter(0, 1))), s=18, c=PLOT_NEUTRALS["sig_down"], alpha=0.82)
     ax.axhline(-np.log10(alpha), color=PLOT_NEUTRALS["threshold"], linestyle="--", linewidth=1)
     ax.axvline(lfc_threshold, color=PLOT_NEUTRALS["threshold_light"], linestyle=":", linewidth=1)
     ax.axvline(-lfc_threshold, color=PLOT_NEUTRALS["threshold_light"], linestyle=":", linewidth=1)
