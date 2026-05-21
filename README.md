@@ -10,6 +10,7 @@
 ## Snakemake Pipeline Bulk RNA-seq
 
 ```mermaid
+%%{init: {'themeVariables': {'fontSize': '10px'}, 'flowchart': {'nodeSpacing': 14, 'rankSpacing': 18, 'diagramPadding': 2}}}%%
 flowchart TD
 	classDef control fill:#F3F4F6,stroke:#4B5563,color:#111827,stroke-width:1.2px;
 	classDef config fill:#FFF4E6,stroke:#D17B0F,color:#111827,stroke-width:1.2px;
@@ -17,21 +18,34 @@ flowchart TD
 	classDef stage fill:#F9F6E7,stroke:#B8871B,color:#111827,stroke-width:1.2px;
 	classDef output fill:#EDF7ED,stroke:#4E8F5C,color:#111827,stroke-width:1.1px;
 
-	snakefile[Snakefile<br/>rule all]:::control
-	config[config/config.yaml<br/>pipeline settings]:::config
-	input[GeneLab RNA-seq archives<br/>HISAT2 index + Ensembl GTF]:::input
-
-	archive[Archive + manifests<br/>extract and build sample metadata]:::stage
-	trim[Trim + read QC<br/>fastp, FastQC, MultiQC]:::stage
-	align[Merge + align<br/>HISAT2, samtools, BAM QC]:::stage
-	counts[Count genes<br/>featureCounts matrix]:::stage
-	de[Normalize + contrasts<br/>PyDESeq2 outputs]:::stage
-	report[Plots + report<br/>qc_diff_exp outputs]:::output
-
-	config -.-> snakefile
-	input --> archive --> trim --> align --> counts --> de --> report
+	config[config/config.yaml<br/>pipeline settings]:::config -.-> snakefile[Snakefile<br/>rule all]:::control
+	input[GeneLab RNA-seq archives<br/>HISAT2 index + Ensembl GTF]:::input --> archive[Archive + manifests<br/>extract + sample metadata]:::stage
+	archive --> trim[Trim + read QC<br/>fastp, FastQC, MultiQC]:::stage --> align[Merge + align<br/>HISAT2, samtools, BAM QC]:::stage
+	align --> counts[Count genes<br/>featureCounts matrix]:::stage --> de[Normalize + contrasts<br/>PyDESeq2]:::stage
+	de --> report[Plots + report<br/>qc_diff_exp outputs]:::output
 	snakefile --> archive
 ```
+
+`featureCounts` undercounts genes with multiple isoforms due to its strict deterministic handling of ambigous reads, in contrast to *transcript-aware* quantifiers (Salmon/Kallisto - use probabilistic Expectation-Maximixation (EM) algorithms).
+
+So if a read overlaps more than one meta-feature, the algorithm flags it as ambiguous and discards it entirely. For isoform-laden genes this triggers undercounting through: 
+
+1. Improper parameter grouping (use of `-g transcript_id`) instead of `g gene_id` in the GTF attributes. $\rightarrow$ `featureCounts` configured to aggregate by `gene_id` then reads on shared exons of the same gene are merged into a single inion-exon and counted once. 
+2. Genes with high isoform complexity possess expansive and intricate genomic architectures. 
+   - If read aligns to an exon that physically overlaps a feature belonging to an entirely different `gene_id`, `featureCounts` discards read because it cannot definitely assign it to a single gene.
+3. Isoform-laden fenes are frequently part of [paralogous gene](https://www.reddit.com/r/explainlikeimfive/comments/12d21n/explain_like_im_5_what_are_orthologous_and/) families that share significant sequence homology across the genome. 
+
+- So `featureCounts` `-g gene_id` will still discard reads: inter-gene overlaps and/or multi-mapping reads 
+
+| Characteristic | `featureCounts` (Alignment-based) | Kallisto / Salmon (Alignment-free) |
+| :--- | :--- | :--- |
+| **Primary Use Case** | Gene-level expression, variant calling, non-RNA seq | Transcript/Isoform-level expression |
+| **Input Requirements** | Aligned BAM file + GTF/GFF Annotation | Raw FASTQ files + Transcriptome FASTA Index |
+| **Ambiguous/Multi-mapping** | Discarded by default | Probabilistically assigned via EM algorithm |
+| **Computational Footprint** | High (requires prior genome alignment step) | Very Low (fast execution, minimal storage) |
+| **Isoform Resolution** | Poor (collapses via union-exon model) | Excellent |
+
+---
 
 ### Example volcano plots from normalized counts (Bulk RNA-seq):
 
@@ -41,27 +55,24 @@ flowchart TD
 ## Proteomics
 
 ```mermaid
-flowchart LR
+flowchart TD
 	classDef input fill:#EEF4FF,stroke:#4C78A8,color:#111827,stroke-width:1.1px;
 	classDef stage fill:#F9F6E7,stroke:#B8871B,color:#111827,stroke-width:1.2px;
 	classDef output fill:#EDF7ED,stroke:#4E8F5C,color:#111827,stroke-width:1.1px;
 
-	raw[Orbitrap .raw files]:::input --> mzml[mzML conversion<br/>msconvert or ThermoRawFileParser]:::stage
-	mzml --> fragpipe[FragPipe<br/>ID and TMT quantification]:::stage
-	fragpipe --> fragout[combined_protein.tsv<br/>abundance_protein_MD.tsv]:::output
+	raw[Orbitrap .raw]:::input --> mzml[mzML conversion]:::stage
+	mzml --> fragpipe[FragPipe TMT quant]:::stage
+	fragpipe --> fragout[combined_protein.tsv]:::output
 
 	subgraph postfrag[post_frag_pipeline]
-		prep[prepare_protein_de_inputs.py]:::stage
-		fit[fit_protein_linear_models.py]:::stage
-		plot[plot_protein_linear_model_results.py]:::stage
-		qc[compute_tissue_marker_qc.py]:::stage
+		prep[prepare_protein_de_inputs]:::stage --> fit[fit_protein_linear_models]:::stage
+		prep --> qc[compute_tissue_marker_qc]:::stage
+		fit --> plot[plot_linear_model_results]:::stage
 	end
 
-	fragout --> prep --> fit
-	prep --> qc
-	fit --> plot
+	fragout --> prep
 	fit --> de[Differential abundance tables]:::output
-	plot --> figs[PCA, volcano, density, heatmaps]:::output
+	plot --> figs[PCA, volcano, heatmaps]:::output
 	qc --> markers[Tissue-marker QC tables]:::output
 ```
 
@@ -87,4 +98,6 @@ Sample-level tissue-marker QC scores (mean per-gene z-scores across muscle and l
 
 ![heatmap](plots/heatmap_proteome_no_GC.png)
 
+---
 
+1. Merge sequence data $\rightarrow$ Trim $\rightarrow$ Align $\rightarrow$ Methylation call data + MultiQC $\rightarrow$ Differential methylation analysis

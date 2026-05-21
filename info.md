@@ -18,6 +18,9 @@ Used for:
 - helping aligners weigh confidence
 
 ---
+**Wild card**: Placeholder mechanism used to generalize rules and target specifications which allow single set of workflow logic to process multiple input files or output names without needing separate code definitions
+
+---
 
 **Adapter contamination**: when a sequencing read contains part of the synthetic adapter sequence that was added during klibrary preparation (instead of only biological sequence from the sample). Occurs when DNA/RNA fragment is shorter than the read length so the sequencer reads through the real insert and into the adapter on the end. It can also happen it the adapter dimerizes or if poorly size-selected fragments get sequenced.
 

@@ -38,7 +38,7 @@ include: "workflow/rules/trimming.smk"
 include: "workflow/rules/alignment.smk"
 include: "workflow/rules/differential_expression.smk"
 
-
+# Rules and order of execution
 rule all:
     input:
         BASE_TARGETS
