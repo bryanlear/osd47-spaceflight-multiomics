@@ -1,0 +1,41 @@
+from pathlib import Path
+
+configfile: "config.yaml" #loads config then 
+# look up values from config.yaml (config[])
+INPUT_DIR = Path(config["input_dir"]) #input_dir
+SAMPLES = config["samples"] #samples    
+MULTIQC = config["multiqc"] #multiqc parameters
+MULTIQC_OUTPUT_DIR = Path(MULTIQC["output_dir"]) #select output_dir from multiqc parameters
+MULTIQC_REPORT = MULTIQC_OUTPUT_DIR / MULTIQC["report_name"] #in output_dir, store file as report_name
+
+#to override values from config.yaml with "snakemake --config input_dir=/new/path"
+
+def fastqc_htmls(wildcards):
+    reports = []
+    for sample in SAMPLES: #sample list in config
+        sample_dir = INPUT_DIR / sample 
+        reports.extend(sorted(sample_dir.glob("*_fastqc.html"))) #.extend() adds files to list, .glob() finds files matching pattern in sample_dir
+    return [str(report) for report in reports if not report.name.startswith("._")] #Avoid MacOS shit files
+
+rule all: #checlist declares final target
+    input:
+        str(MULTIQC_REPORT) #snakemake expects file paths as strings
+
+rule multiqc_fastqc:
+    input:
+        fastqc_htmls #individual htmls (this is not the right way to do it)
+    output:
+        html=str(MULTIQC_REPORT)
+    params:
+        outdir=str(MULTIQC_OUTPUT_DIR),
+        report_name=MULTIQC["report_name"],
+        title="OSD-47 epigenomics FastQC"
+    shell: #run command using multiqc
+        """
+        multiqc {input} \
+            --module fastqc \
+            --title "{params.title}" \
+            --outdir {params.outdir} \
+            --filename {params.report_name} \
+            --force
+        """

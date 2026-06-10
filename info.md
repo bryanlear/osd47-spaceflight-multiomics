@@ -189,3 +189,44 @@ Multicellular program = Coordinated gene-expression pattern shared across multip
 * `.raw` $\rightarrow$ `.mzML`
 
 `.mzML` $\rightarrow$ Fragpipe
+
+---
+
+### 
+
+- **Optical swath**: strip-like imaging region of an Illumina flow cell that is scanned by the sequencer's optics.
+
+```
+flow cell
+  → lane
+    → surface
+      → swath
+        → tile
+
+2216
+││└─ tile 16
+│└── swath 2
+└─── surface 2
+
+-----------------------
+
+Surface 1, Lane X
+
+┌──────────────────────────────┐
+│ Swath 1: tiles 1101–1128     │
+├──────────────────────────────┤
+│ Swath 2: tiles 1201–1228     │
+└──────────────────────────────┘
+
+------------------------
+
+Surface 2, Lane X
+
+┌──────────────────────────────┐
+│ Swath 1: tiles 2101–2128     │
+├──────────────────────────────┤
+│ Swath 2: tiles 2201–2228     │
+└──────────────────────────────┘
+
+```
+

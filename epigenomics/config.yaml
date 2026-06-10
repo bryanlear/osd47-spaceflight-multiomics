@@ -1,0 +1,16 @@
+input_dir: /Volumes/bryan_SSD/genelab/nasa_epigenomics
+
+samples:
+  - C-Ba-1
+  - C-Ba-2
+  - C-Ba-3
+  - C-FLT-1
+  - C-FLT-2
+  - C-FLT-4
+
+multiqc:
+  executable: ../.venv/bin/multiqc
+  python: ../.venv/bin/python
+  output_dir: results/multiqc
+  report_name: osd47_epigenomics_fastqc_multiqc.html
+  parsed_dir: results/parsed_fastqc_html

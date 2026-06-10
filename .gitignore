@@ -3,6 +3,7 @@ results/
 proteomics/fragpipe-24.0
 proteomics/MSFragger-master
 proteomics/fragpipe_headless.md
+metadata/
 *.gtf
 *.fa
 *.fasta
@@ -18,3 +19,7 @@ proteomics/fragpipe_headless.md
 *.pin
 *.pepXML
 *.tsv
+*.log
+
+
+epigenomics/scripts/fastqc_html_to_multiqc.py
