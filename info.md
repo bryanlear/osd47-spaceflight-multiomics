@@ -230,3 +230,10 @@ Surface 2, Lane X
 
 ```
 
+- **Bismark conversion**: Quality control statistics metrics that estimate how efficiently the bisulfide treatment converted unmethylated cytosined into thymines.
+
+$$conversion.rate=\frac{converted.methylated.Cs}{total.unmethylated.Cs}$$
+
+  - $>99 \% \rightarrow$ Excellent
+
+  - $<95 \% \rightarrow$ Potential problems 

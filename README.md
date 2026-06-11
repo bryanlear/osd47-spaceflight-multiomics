@@ -100,4 +100,46 @@ Sample-level tissue-marker QC scores (mean per-gene z-scores across muscle and l
 
 ---
 
-1. Merge sequence data $\rightarrow$ Trim $\rightarrow$ Align $\rightarrow$ Methylation call data + MultiQC $\rightarrow$ Differential methylation analysis
+## Snakemake Pipeline WGBS
+
+Bisulfide tratment changes the sequence composition of the DNA before sequencing 
+
+```
+Unmethylated C → T
+Complementary G content decreases too
+```
+
+**e.g.,** 
+
+1. 
+Unmethylated cytosines:
+
+5' - A C G T C G C - 3'
+
+Na+ Bisulfide reacts with cytosine and converts it into a modified base **uiracil sulfonate**, which is then converted to **uracil (U)**.
+
+C → U
+
+Methylated cytosines are mostly protected from such reaction and remain as cytosines:
+
+5-methylcytosine (5mC) $≠$ U
+
+2. 
+DNA polymerase treats uracil as a **thymine** U → T
+
+|Original Base|After Bisulfide + PCR|
+|---|---:|
+|C|T|
+|5-methyl-C|C|
+
+Therefore: 
+
+5' - A C G mC G T C - 3' **---bisulfide--->** 5' - A U G mC G T U - 3' **---PCR--->**  5' - A T G C G T T - 3'
+
+```
+Reference: A C G C G T C
+Read:      A T G C G T T
+```
+The conversion creates a strong C/T imbalance and positional base-composition bias (near read starts). FastQC expects random base composition like normal DNA-seq. Thus, repeated per-base sequence content, k-mer content, GC distribution failures (in MultiQC report) are expected for WGBS/bisulfite libraries.
+
+MultiQC reports uneven read depth, lane and tile artifacts, and a small set of adapter-content failures. C-FLT-1 is shallower than the others. These metrics matter for downstream methylation analysis. Lower depth reduces CpG coverage and statistical power. Uneven depth can create sample-lvl coverage differences that need filtering and normalization.

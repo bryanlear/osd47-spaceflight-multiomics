@@ -20,6 +20,6 @@ metadata/
 *.pepXML
 *.tsv
 *.log
-
+*.pkl
 
 epigenomics/scripts/fastqc_html_to_multiqc.py

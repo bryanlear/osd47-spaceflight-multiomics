@@ -1,13 +1,26 @@
 from pathlib import Path
 
+#############################################################################
 configfile: "config.yaml" #loads config then 
 # look up values from config.yaml (config[])
+
+#1.
+#############################################################################
 INPUT_DIR = Path(config["input_dir"]) #input_dir
 SAMPLES = config["samples"] #samples    
 MULTIQC = config["multiqc"] #multiqc parameters
 MULTIQC_OUTPUT_DIR = Path(MULTIQC["output_dir"]) #select output_dir from multiqc parameters
 MULTIQC_REPORT = MULTIQC_OUTPUT_DIR / MULTIQC["report_name"] #in output_dir, store file as report_name
+#############################################################################
 
+#2,
+TRIMMING = config["trimming"]
+TRIMGALORE = TRIMMING["executable"]
+TRIM_OUTPUT_DIR = Path(TRIMMING["output_dir"])
+TRIM_REPORT_DIR = Path(TRIMMING["report_dir"])
+
+#############################################################################
+#############################################################################
 #to override values from config.yaml with "snakemake --config input_dir=/new/path"
 
 def fastqc_htmls(wildcards):
@@ -17,9 +30,30 @@ def fastqc_htmls(wildcards):
         reports.extend(sorted(sample_dir.glob("*_fastqc.html"))) #.extend() adds files to list, .glob() finds files matching pattern in sample_dir
     return [str(report) for report in reports if not report.name.startswith("._")] #Avoid MacOS shit files
 
+#############################################################################
+#############################################################################
+#############################################################################
+
+def fastq_pairs(): #scans each sample and pairs R1 and R2
+    pairs = []
+    for sample in SAMPLES:
+        sample_dir = INPUT_DIR / sample #same as above 
+        r1_files = sorted(sample_dir.glob("*_R1_*.fastq.gz")) #discover read 1
+        for r1 in r1_files:
+            r2 = Path(str(r1).replace("_R1_", "_R2_")) #discover read 2
+            if not r2.exists():
+                raise ValueError(f"Missing R2 for {r1}")
+            pairs.append((sample, r1, r2)) #append tuple (sample, r1, r2) to pairs list
+    return pairs
+
+#############################################################################
+#############################################################################
+
 rule all: #checlist declares final target
     input:
-        str(MULTIQC_REPORT) #snakemake expects file paths as strings
+        str(MULTIQC_REPORT), #snakemake expects file paths as strings
+        "results/trimmed/.trimmed.ok" #marker 
+        
 
 rule multiqc_fastqc:
     input:
@@ -39,3 +73,28 @@ rule multiqc_fastqc:
             --filename {params.report_name} \
             --force
         """
+        
+rule trim_galore_after_multiqc:
+    input:
+        multiqc=str(MULTIQC_REPORT)
+    output:
+        marker="results/trimmed/.trimmed.ok"
+    run:
+        for sample, r1, r2 in fastq_pairs(): #for each sample, r1, r2 in returned fastq_pairs() list
+            sample_outdir = TRIM_OUTPUT_DIR / sample
+            
+            shell(
+                """
+                mkdir -p {sample_outdir}
+                {TRIMGALORE} \
+                    --paired \
+                    --cores {TRIMMING[threads]} \
+                    --quality {TRIMMING[quality]} \
+                    --length {TRIMMING[length]} \
+                    --output_dir {sample_outdir} \
+                    {r1} {r2}
+                
+                """
+            )
+        
+        shell("touch {output.marker}") #create marker file to signal trimming is done

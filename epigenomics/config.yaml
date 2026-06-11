@@ -14,3 +14,13 @@ multiqc:
   output_dir: results/multiqc
   report_name: osd47_epigenomics_fastqc_multiqc.html
   parsed_dir: results/parsed_fastqc_html
+
+
+trimming:
+  executable: ../TrimGalore/target/release/trim_galore
+  output_dir: /Volumes/bryan_SSD/genelab/nasa_epigenomics/results/trimmed_fastq
+  report_dir: results/trimgalore_reports
+  paired: True
+  threads: 4
+  quality: 20
+  length: 20
