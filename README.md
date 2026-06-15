@@ -143,3 +143,6 @@ Read:      A T G C G T T
 The conversion creates a strong C/T imbalance and positional base-composition bias (near read starts). FastQC expects random base composition like normal DNA-seq. Thus, repeated per-base sequence content, k-mer content, GC distribution failures (in MultiQC report) are expected for WGBS/bisulfite libraries.
 
 MultiQC reports uneven read depth, lane and tile artifacts, and a small set of adapter-content failures. C-FLT-1 is shallower than the others. These metrics matter for downstream methylation analysis. Lower depth reduces CpG coverage and statistical power. Uneven depth can create sample-lvl coverage differences that need filtering and normalization.
+
+
+

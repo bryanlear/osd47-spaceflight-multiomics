@@ -9,17 +9,9 @@ configfile: "config.yaml" #loads config then
 INPUT_DIR = Path(config["input_dir"]) #input_dir
 SAMPLES = config["samples"] #samples    
 MULTIQC = config["multiqc"] #multiqc parameters
-MULTIQC_EXECUTABLE = MULTIQC["executable"] #runc ../.venv/bin/multiqc
-MULTIQC_PYTHON = MULTIQC["python"]
+MULTIQC_EXECUTABLE = MULTIQC["executable"]
 MULTIQC_OUTPUT_DIR = Path(MULTIQC["output_dir"]) #select output_dir from multiqc parameters
 MULTIQC_REPORT = MULTIQC_OUTPUT_DIR / MULTIQC["report_name"] #in output_dir, store file as report_name
-PARSED_FASTQC_DIR = Path(MULTIQC["parsed_dir"])
-PARSED_FASTQC_FILES = [
-    str(PARSED_FASTQC_DIR / "fastqc_general_stats_mqc.yaml"),
-    str(PARSED_FASTQC_DIR / "fastqc_basic_stats_mqc.yaml"),
-    str(PARSED_FASTQC_DIR / "fastqc_module_status_mqc.yaml"),
-    str(PARSED_FASTQC_DIR / "fastqc_status_counts_mqc.yaml"),
-]
 #############################################################################
 
 #2,
@@ -62,26 +54,10 @@ rule all: #checlist declares final target
     input:
         str(MULTIQC_REPORT), #snakemake expects file paths as strings
         "results/trimmed/.trimmed.ok" #marker 
-
-rule parse_fastqc_html:
-    input:
-        fastqc_htmls
-    output:
-        PARSED_FASTQC_FILES
-    params:
-        python=MULTIQC_PYTHON,
-        script="scripts/fastqc_html_to_multiqc.py",
-        outdir=str(PARSED_FASTQC_DIR)
-    shell:
-        """
-        {params.python} {params.script} \
-            --output-dir {params.outdir} \
-            {input}
-        """
         
 rule multiqc_fastqc:
     input:
-        PARSED_FASTQC_FILES
+        fastqc_htmls #individual htmls (this is not the right way to do it)
     output:
         html=str(MULTIQC_REPORT)
     params:
@@ -92,6 +68,7 @@ rule multiqc_fastqc:
     shell: #run command using multiqc
         """
         {params.executable} {input} \
+            --module fastqc \
             --title "{params.title}" \
             --outdir {params.outdir} \
             --filename {params.report_name} \

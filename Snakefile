@@ -9,6 +9,8 @@ FEATURE_COUNTS_ENABLED = FEATURE_COUNTS.get("enabled", False)
 ARCHIVE_IDS = [archive["id"] for archive in config["archives"]]
 STUDY_SLUG = str(config["study"]["accession"]).lower().replace("-", "")
 TRIMMED_MULTIQC_HTML = f"results/qc/trimmed_multiqc/{STUDY_SLUG}_trimmed_multiqc.html"
+###########################################################################
+
 
 BASE_TARGETS = [
     config["outputs"]["archive_manifest"],
@@ -47,3 +49,4 @@ rule all:
         + FEATURE_COUNTS_TARGETS
         + PYDESEQ2_TARGETS
         + QC_DIFF_EXP_TARGETS
+        

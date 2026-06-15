@@ -9,7 +9,7 @@ configfile: "config.yaml" #loads config then
 INPUT_DIR = Path(config["input_dir"]) #input_dir
 SAMPLES = config["samples"] #samples    
 MULTIQC = config["multiqc"] #multiqc parameters
-MULTIQC_EXECUTABLE = MULTIQC["executable"] #runc ../.venv/bin/multiqc
+MULTIQC_EXECUTABLE = MULTIQC["executable"]
 MULTIQC_PYTHON = MULTIQC["python"]
 MULTIQC_OUTPUT_DIR = Path(MULTIQC["output_dir"]) #select output_dir from multiqc parameters
 MULTIQC_REPORT = MULTIQC_OUTPUT_DIR / MULTIQC["report_name"] #in output_dir, store file as report_name

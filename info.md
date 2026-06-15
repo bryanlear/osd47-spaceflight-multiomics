@@ -237,3 +237,11 @@ $$conversion.rate=\frac{converted.methylated.Cs}{total.unmethylated.Cs}$$
   - $>99 \% \rightarrow$ Excellent
 
   - $<95 \% \rightarrow$ Potential problems 
+
+
+Trimming after first QC:
+
+```
+cd osd47-spaceflight-multiomics/epigenomics
+snakemake -p --cores 4 --runtime-source-cache-path .snakemake-cache/runtime-source-cache-20260615b
+```
