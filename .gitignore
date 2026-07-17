@@ -21,5 +21,6 @@ metadata/
 *.tsv
 *.log
 *.pkl
+*.bt2
 
 epigenomics/scripts/fastqc_html_to_multiqc.py

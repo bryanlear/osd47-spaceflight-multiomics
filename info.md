@@ -1,3 +1,9 @@
+**Namespaces**: Act as containers to group related code and prevent naming collisions. They are a declarative region thath provides a scope for identifiers (e.g., classess, variables, functions) and allow to organize code into logical categories and avoid name clashed when dealing with large codebases or multiple libraries.
+
+**Module directives**: e.g., `import`, `using`. Statements used to import / esport code across different files and modules.  
+
+---
+
 * **Quality string**: GIves the base-bu-base confidence of the sequencer's calls
 * A → ASCII 65 → Q = 32
 * F → ASCII 70 → Q = 37
@@ -192,6 +198,18 @@ Multicellular program = Coordinated gene-expression pattern shared across multip
 
 ---
 
+## Single `snakefile` vs. Multiple `smk` Modules 
+
+* Single `Snakefile`:
+  * Simple to read and track
+  * Best for small pipelines (e.g., $< 50$ rules)
+  * Low reusability since copy-pasting may be required
+
+* Multiple `.smk` Modules
+  * e.g., $50+$ rules
+  * High reusability since rules can be imported / shared
+---
+
 ### 
 
 - **Optical swath**: strip-like imaging region of an Illumina flow cell that is scanned by the sequencer's optics.
@@ -239,9 +257,51 @@ $$conversion.rate=\frac{converted.methylated.Cs}{total.unmethylated.Cs}$$
   - $<95 \% \rightarrow$ Potential problems 
 
 
-Trimming after first QC:
+---
 
-```
-cd osd47-spaceflight-multiomics/epigenomics
-snakemake -p --cores 4 --runtime-source-cache-path .snakemake-cache/runtime-source-cache-20260615b
-```
+"Total Sequences" contain only the read count, it doesn't account for:
+* Read length
+* Alignment rate
+* Duplicate removal 
+* Trimming
+* OVerlapping paired-end reads
+* Genome/target size
+* 
+**Coverage**: Describes percentage of genome / target region that is sequenced to a certain threshold. ***How much of the target region is covered at least once***. It can be influenced by:
+
+- Quality of DNA sample
+- Library preparation
+- Sequencing bias
+- High GC content 
+- Repetitive elements
+
+**Sequencing depth**: Describes how often a specific base in the reference is read during the sequencing process. ***Numberm of times a nucleotide is read during the sequencing process***. Can be affected by:
+
+- Accuracy of genome alignment algorithms
+- Uniqueness of sequencing reads
+- How well they can be mapped to the target genome
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start;">
+  <div>
+    <p><strong>Coverage</strong></p>
+    <img src="plots/coverage.png" alt="coverage" style="width: 100%; height: auto;" />
+  </div>
+  <div>
+    <p><strong>Depth</strong></p>
+    <img src="plots/depth.png" alt="depth" style="width: 100%; height: auto;" />
+  </div>
+</div>
+
+[Source](https://cegat.com/depth-and-coverage-what-is-the-difference/)
+
+---
+
+Fewer `Total Sequences` does not automatically mean poor coverage. Depth depends on:
+
+$usable\_reads$ = raw_reads * alignment_rate * (1-duplicate_fraction) * other_filtering_fractions
+
+**They do may imply:**
+* Lower potential sequencing depth
+* Fewer aligned reads
+* Lower statistical power
+* Less reliable measurements in low-signal regions

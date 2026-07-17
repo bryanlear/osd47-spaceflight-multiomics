@@ -102,7 +102,7 @@ Sample-level tissue-marker QC scores (mean per-gene z-scores across muscle and l
 
 ## Snakemake Pipeline WGBS
 
-Bisulfide tratment changes the sequence composition of the DNA before sequencing 
+Bisulfite tratment changes the sequence composition of the DNA before sequencing 
 
 ```
 Unmethylated C → T
@@ -116,7 +116,7 @@ Unmethylated cytosines:
 
 5' - A C G T C G C - 3'
 
-Na+ Bisulfide reacts with cytosine and converts it into a modified base **uiracil sulfonate**, which is then converted to **uracil (U)**.
+Na+ Bisulfite reacts with cytosine and converts it into a modified base **uiracil sulfonate**, which is then converted to **uracil (U)**.
 
 C → U
 
@@ -127,22 +127,46 @@ Methylated cytosines are mostly protected from such reaction and remain as cytos
 2. 
 DNA polymerase treats uracil as a **thymine** U → T
 
-|Original Base|After Bisulfide + PCR|
+|Original Base|After Bisulfite + PCR|
 |---|---:|
 |C|T|
 |5-methyl-C|C|
 
 Therefore: 
 
-5' - A C G mC G T C - 3' **---bisulfide--->** 5' - A U G mC G T U - 3' **---PCR--->**  5' - A T G C G T T - 3'
+5' - A C G mC G T C - 3' **---bisulfite--->** 5' - A U G mC G T U - 3' **---PCR--->**  5' - A T G C G T T - 3'
 
 ```
 Reference: A C G C G T C
 Read:      A T G C G T T
 ```
+
 The conversion creates a strong C/T imbalance and positional base-composition bias (near read starts). FastQC expects random base composition like normal DNA-seq. Thus, repeated per-base sequence content, k-mer content, GC distribution failures (in MultiQC report) are expected for WGBS/bisulfite libraries.
 
 MultiQC reports uneven read depth, lane and tile artifacts, and a small set of adapter-content failures. C-FLT-1 is shallower than the others. These metrics matter for downstream methylation analysis. Lower depth reduces CpG coverage and statistical power. Uneven depth can create sample-lvl coverage differences that need filtering and normalization.
 
+Thus methylated cytosines remain cytosines. Valid WGBS read can contain many apparent $C \rightarrow T$ mismatches relative to the reference. On the opposite strand, the effect shows up as $G \rightarrow A$
+
+A normal aligner would treat the differences as sequencing errors or variants (mismatch penalty). It may also fail to align the read, assign poor alignment scores, incorrect mapping, preferentially retain methylated reads (this can cause alignment to become dependent on methylation status which can bias methylation estimates that are being trying to be measured).
+
+**Bismark** accounts for the reduced sequence alphabet caused by bisulfite conversion:
+
+Accumulating many penalties would cause th ealigner to throw the read away, here, a $C$ to $T$ difference isn't an error but a *biological signal*.
 
 
+1. **Genome preparations:**
+   - **Artificially** converts reference genome before alignment by generating $2$ new versions of it: 
+
+     ```
+     C→T All cytocines are converted to thymines (modelling forward strand)
+
+     G→A Converted reference All guanines are converted to adenines (modelling the reverse strand)
+     ```
+
+    - Search indices are then built for the artificial genomes.
+
+2. **Read alignment:**
+   - Bismark applies same conversion logic to the incoming sequencing reads. It aligns them to the converted reference genome. So, by converting everything, the aligner ignores $C/T$ mismatches and maps the read to its correct genomic coordinate.
+
+3. **Methylation calling:**
+   - Once exact location is found, the aligner gets rid of the converted versions. It aligns the original, unconverted read directly against the original, unconverted reference genome at that specific location to determine what happened to each cytosine.
