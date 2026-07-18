@@ -2,6 +2,17 @@
 
 **Module directives**: e.g., `import`, `using`. Statements used to import / esport code across different files and modules.  
 
+```
+C-Ba-1_S10_L005_R1_001
+       │   │    │
+       │   │    └─ Read 1
+       │   └────── Lane 5
+       └────────── Sample number 10
+```
+
+
+
+
 ---
 
 * **Quality string**: GIves the base-bu-base confidence of the sequencer's calls
@@ -305,3 +316,179 @@ $usable\_reads$ = raw_reads * alignment_rate * (1-duplicate_fraction) * other_fi
 * Fewer aligned reads
 * Lower statistical power
 * Less reliable measurements in low-signal regions
+
+1. 
+```
+mkdir -p refs/ncbi_GRCm39_full_analysis_set
+
+gzip -dc \
+  GCA_000001635.9_GRCm39_full_analysis_set.fna.gz \
+  > refs/ncbi_GRCm39_full_analysis_set/GRCm39_full_analysis_set.fa
+```
+
+2. 
+```
+bismark prepare refs/ncbi_GRCm39_full_analysis_set/
+```
+
+**OUTPUT:**
+
+```
+epigenomics/refs/ensembl_112/
+├── Mus_musculus.GRCm39.dna.primary_assembly.fa
+└── Bisulfite_Genome/
+    ├── CT_conversion/
+    └── GA_conversion/
+```
+
+3. 
+
+
+
+
+```
+bismark \ 
+   --genome epigenomics/refs/ensembl_112 \
+   -1 Bisulfite_Genome/CT_conversion \
+   -2 Bisulfite_Genome/GA_conversion
+```
+
+
+
+
+
+---
+
+
+## OTHER:
+
+### Unix
+- `-u0/1/2` - File descriptor
+  - 0: Standard input (stdin)
+  - 1: Standard output (stdout)
+  - 2: Standard error (stderr)
+    - e.g., `-u2` forces error message to be sent to the error stream rather than the standard output stream. 
+```
+if (( ${#r1_files[@]} == 0 )); then
+  print -u2 "ERROR: no R1 files for ${sample}"
+  continue
+fi
+```
+
+3. 
+```
+reference="epigenomics/refs/ensembl_112"
+trim_root="/Volumes/bryan_SSD/genelab/nasa_epigenomics/results/trimmed_fastq"
+output_root="/Volumes/bryan_SSD/genelab/nasa_epigenomics/results/bismark_lane_alignments"
+
+samples=(
+  C-Ba-1
+  C-Ba-2
+  C-Ba-3
+  C-FLT-1
+  C-FLT-2
+  C-FLT-4
+)
+
+for sample in "${samples[@]}"; do
+  sample_dir="${trim_root}/${sample}"
+  output_dir="${output_root}/${sample}"
+
+  r1_files=("${sample_dir}"/*R1*_val_1.fq.gz(N))
+  r2_files=("${sample_dir}"/*R2*_val_2.fq.gz(N))
+
+  if [[ "${sample}" == "C-Ba-1" ]]; then
+    r1_files=("${r1_files[@]:2}")
+    r2_files=("${r2_files[@]:2}")
+  fi
+
+  if (( ${#r1_files[@]} != ${#r2_files[@]} )); then
+    print -u2 "ERROR: unequal R1/R2 counts for ${sample}"
+    exit 1
+  fi
+
+  mkdir -p "${output_dir}"
+
+  for (( i=1; i<=${#r1_files[@]}; i+=2 )); do
+    r1_a="${r1_files[$i]}"
+    r2_a="${r2_files[$i]}"
+
+    name_a="${r1_a:t}"
+    name_a="${name_a%_R1_001_val_1.fq.gz}"
+
+    bismark align \
+      --genome "${reference}" \
+      -1 "${r1_a}" \
+      -2 "${r2_a}" \
+      --basename "${name_a}" \
+      --output_dir "${output_dir}" &
+
+    pid_a=$!
+
+    if (( i + 1 <= ${#r1_files[@]} )); then
+      r1_b="${r1_files[$((i + 1))]}"
+      r2_b="${r2_files[$((i + 1))]}"
+
+      name_b="${r1_b:t}"
+      name_b="${name_b%_R1_001_val_1.fq.gz}"
+
+      bismark align \
+        --genome "${reference}" \
+        -1 "${r1_b}" \
+        -2 "${r2_b}" \
+        --basename "${name_b}" \
+        --output_dir "${output_dir}" &
+
+      pid_b=$!
+
+      wait "${pid_a}"
+      status_a=$?
+
+      wait "${pid_b}"
+      status_b=$?
+
+      if (( status_a != 0 || status_b != 0 )); then
+        print -u2 "ERROR: alignment failed for ${sample}"
+        exit 1
+      fi
+    else
+      wait "${pid_a}"
+
+      if (( $? != 0 )); then
+        print -u2 "ERROR: alignment failed for ${name_a}"
+        exit 1
+      fi
+    fi
+  done
+done
+```
+
+---
+
+### WGBS library directionality and alignment:
+
+- Bisulfite treament = Unmethylated $C \rightarrow U$ (amplified as $T$ during PCR). THe process breaks the the standard base-pairing reverse complementarity of the DNA duplex. A bisulfite-treated locus can generate $4$ distinct strand permutations:
+  - **OT**: Original top strand
+  - **OB**: Original bottom strand 
+  - **CTOT**: Complementary to original top strand
+  - **CTOP**: Complementary to original bottom strand
+
+A **directional library** is prepared by ligating methylated adapters to the genomic DNA ***BEFORE*** bisulfite conversion. Adapters dictate which strands amplify and sequence and therefore the sequencer only produces reads that originate from OT and OB. Default for Bismark, the algorithm only maps incoming reads against OT and OB.
+
+A **non-directional library** is prepared using methods where adapters are attached or sequences are primed ***AFTER*** the bisulfite conversion step. BEcause the DNA is already single-stranded and converted when the adapters are added, all four possible strand permutations, OT, OB, CTOT, CTOP, are captured, amplified, and sequenced. When processing non-directional, one must specify: `--non_direcitonal` flag in Bismark to map reads against all four theoretical strand references rather than just two. 
+  - Adapters cannot easily stick to single strands since theya re designed to be ligated onto the ends of *double-stranded* DNA
+  - A kit such as **EpiGnome** use random primers to synthesize a brand-new complementary strand for every piece of single-stranded DNA.
+    - Uses OT as template to build a CTOT
+    - USes OB as template to build CTOB
+    - The kit attaches the adapters to everything. 
+
+| Feature | Directional Library | Non-Directional Library (e.g., EpiGnome) |
+| :--- | :--- | :--- |
+| **Adapter Addition** | *Before* bisulfite treatment (on double-stranded DNA) | *After* bisulfite treatment (on single-stranded DNA) |
+| **Strands Sequenced** | 2 Strands (OT, OB) | 4 Strands (OT, OB, CTOT, CTOB) |
+| **Input Requirement** | High (typically 100 ng to >1 µg) | Low (typically 1 ng to 50 ng) |
+| **DNA Quality** | Requires high-quality, intact DNA | Tolerates highly degraded / fragmented DNA |
+| **Primary Usage / Purpose** | Standard WGBS profiling on abundant, fresh or frozen tissue and cell lines. | Specialized WGBS when starting material is extremely scarce or precious. |
+| **Common Applications** | Bulk tissue analysis, standard epigenomic profiling, agricultural genomics. | Liquid biopsies (cell-free DNA), FFPE clinical samples, single-cell methylomics. |
+| **Primary Advantage** | Computationally simpler alignment; efficient use of sequencing depth (only reads original strands). | Maximizes library complexity and data recovery from whatever DNA survives conversion. |
+| **Primary Drawback** | Massive sample loss; harsh bisulfite chemicals destroy most adapter-ligated DNA fragments. | Requires complex 4-strand alignment; sequencing depth is split across complementary strands. |
