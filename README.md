@@ -7,6 +7,8 @@
 - **GC**: Age-matched Ground Controls
 - **BSL**: Basal controls (euthanized at time of launch)
 
+[Background NOTES](info.md)
+
 ## Snakemake Pipeline Bulk RNA-seq
 
 ```mermaid
@@ -101,6 +103,26 @@ Sample-level tissue-marker QC scores (mean per-gene z-scores across muscle and l
 ---
 
 ## Snakemake Pipeline WGBS
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '10px'}, 'flowchart': {'nodeSpacing': 14, 'rankSpacing': 18, 'diagramPadding': 2}}}%%
+flowchart TD
+classDef control fill:#F3F4F6,stroke:#4B5563,color:#111827,stroke-width:1.2px;
+classDef config fill:#FFF4E6,stroke:#D17B0F,color:#111827,stroke-width:1.2px;
+classDef input fill:#EEF4FF,stroke:#4C78A8,color:#111827,stroke-width:1.1px;
+classDef stage fill:#F9F6E7,stroke:#B8871B,color:#111827,stroke-width:1.2px;
+classDef output fill:#EDF7ED,stroke:#4E8F5C,color:#111827,stroke-width:1.1px;
+
+input[GeneLab WGBS archives<br/>FastQ + FastQC files]:::input --> multiqc[Unified QC Report<br/>MultiQC parsing]:::stage
+multiqc --> trim[Trimming<br/>Trim Galore]:::stage
+
+ref[Mouse Genome GRCm39<br/>bismark_genome_preparation]:::config --> align
+
+trim --> align[Bismark Alignment<br/>1. Convert ref & reads<br/>2. Align to converted ref<br/>3. Re-align original reads to<br/>original ref at detected loci]:::stage
+
+align --> output[Methylation Analysis<br/>Final methylation calls]:::output
+```	
+
 
 Bisulfite tratment changes the sequence composition of the DNA before sequencing 
 

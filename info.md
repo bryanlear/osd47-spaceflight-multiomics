@@ -342,40 +342,6 @@ epigenomics/refs/ensembl_112/
 ```
 
 3. 
-
-
-
-
-```
-bismark \ 
-   --genome epigenomics/refs/ensembl_112 \
-   -1 Bisulfite_Genome/CT_conversion \
-   -2 Bisulfite_Genome/GA_conversion
-```
-
-
-
-
-
----
-
-
-## OTHER:
-
-### Unix
-- `-u0/1/2` - File descriptor
-  - 0: Standard input (stdin)
-  - 1: Standard output (stdout)
-  - 2: Standard error (stderr)
-    - e.g., `-u2` forces error message to be sent to the error stream rather than the standard output stream. 
-```
-if (( ${#r1_files[@]} == 0 )); then
-  print -u2 "ERROR: no R1 files for ${sample}"
-  continue
-fi
-```
-
-3. 
 ```
 reference="epigenomics/refs/ensembl_112"
 trim_root="/Volumes/bryan_SSD/genelab/nasa_epigenomics/results/trimmed_fastq"
@@ -396,11 +362,6 @@ for sample in "${samples[@]}"; do
 
   r1_files=("${sample_dir}"/*R1*_val_1.fq.gz(N))
   r2_files=("${sample_dir}"/*R2*_val_2.fq.gz(N))
-
-  if [[ "${sample}" == "C-Ba-1" ]]; then
-    r1_files=("${r1_files[@]:2}")
-    r2_files=("${r2_files[@]:2}")
-  fi
 
   if (( ${#r1_files[@]} != ${#r2_files[@]} )); then
     print -u2 "ERROR: unequal R1/R2 counts for ${sample}"
@@ -465,6 +426,22 @@ done
 
 ---
 
+## OTHER:
+
+### Unix
+- `-u0/1/2` - File descriptor
+  - 0: Standard input (stdin)
+  - 1: Standard output (stdout)
+  - 2: Standard error (stderr)
+    - e.g., `-u2` forces error message to be sent to the error stream rather than the standard output stream. 
+```
+if (( ${#r1_files[@]} == 0 )); then
+  print -u2 "ERROR: no R1 files for ${sample}"
+  continue
+fi
+```
+---
+
 ### WGBS library directionality and alignment:
 
 - Bisulfite treament = Unmethylated $C \rightarrow U$ (amplified as $T$ during PCR). THe process breaks the the standard base-pairing reverse complementarity of the DNA duplex. A bisulfite-treated locus can generate $4$ distinct strand permutations:
@@ -492,3 +469,4 @@ A **non-directional library** is prepared using methods where adapters are attac
 | **Common Applications** | Bulk tissue analysis, standard epigenomic profiling, agricultural genomics. | Liquid biopsies (cell-free DNA), FFPE clinical samples, single-cell methylomics. |
 | **Primary Advantage** | Computationally simpler alignment; efficient use of sequencing depth (only reads original strands). | Maximizes library complexity and data recovery from whatever DNA survives conversion. |
 | **Primary Drawback** | Massive sample loss; harsh bisulfite chemicals destroy most adapter-ligated DNA fragments. | Requires complex 4-strand alignment; sequencing depth is split across complementary strands. |
+
